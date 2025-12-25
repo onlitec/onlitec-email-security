@@ -1,0 +1,283 @@
+# Alertas do Alertmanager para Email Protection
+# Adicione ao seu alertmanager.yml ou alerts.yml
+
+groups:
+  - name: email_protection_alerts
+    interval: 30s
+    rules:
+      # Postfix Alerts
+      - alert: PostfixDown
+        expr: up{job="postfix"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: postfix
+        annotations:
+          summary: "Postfix SMTP server is down"
+          description: "Postfix has been down for more than 2 minutes"
+
+      - alert: EmailQueueHigh
+        expr: postfix_queue_length > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: postfix
+        annotations:
+          summary: "Email queue is high ({{ $value }} emails)"
+          description: "Postfix queue has more than 100 emails for 5 minutes"
+
+      - alert: EmailQueueCritical
+        expr: postfix_queue_length > 500
+        for: 2m
+        labels:
+          severity: critical
+          component: postfix
+        annotations:
+          summary: "Email queue is critically high ({{ $value }} emails)"
+          description: "Postfix queue has more than 500 emails"
+
+      # Rspamd Alerts
+      - alert: RspamdDown
+        expr: up{job="rspamd"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: rspamd
+        annotations:
+          summary: "Rspamd antispam service is down"
+          description: "Rspamd has been down for more than 2 minutes"
+
+      - alert: SpamRateHigh
+        expr: rate(spam_detected_total[5m]) > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: rspamd
+        annotations:
+          summary: "High spam rate detected"
+          description: "Receiving more than 10 spam emails per minute for 10 minutes"
+
+      - alert: SpamRateCritical
+        expr: rate(spam_detected_total[5m]) > 50
+        for: 5m
+        labels:
+          severity: critical
+          component: rspamd
+        annotations:
+          summary: "Critical spam rate detected"
+          description: "Receiving more than 50 spam emails per minute - possible spam attack"
+
+      # ClamAV Alerts
+      - alert: ClamAVDown
+        expr: up{job="clamav"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: clamav
+        annotations:
+          summary: "ClamAV antivirus is down"
+          description: "ClamAV has been down for more than 5 minutes"
+
+      - alert: VirusDetected
+        expr: increase(virus_detected_total[1h]) > 0
+        labels:
+          severity: warning
+          component: clamav
+        annotations:
+          summary: "Virus detected in email"
+          description: "{{ $value }} virus(es) detected in the last hour"
+
+      - alert: VirusOutbreak
+        expr: increase(virus_detected_total[1h]) > 10
+        labels:
+          severity: critical
+          component: clamav
+        annotations:
+          summary: "Possible virus outbreak"
+          description: "{{ $value }} viruses detected in the last hour"
+
+      - alert: ClamAVSignaturesOld
+        expr: (time() - clamav_signature_timestamp) > 86400 * 7
+        for: 1h
+        labels:
+          severity: warning
+          component: clamav
+        annotations:
+          summary: "ClamAV signatures are outdated"
+          description: "Virus signatures haven't been updated in 7 days"
+
+      # PostgreSQL Alerts
+      - alert: PostgreSQLDown
+        expr: up{job="postgres-email"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: postgresql
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "PostgreSQL is unreachable"
+
+      - alert: PostgreSQLHighConnections
+        expr: sum(pg_stat_database_numbackends) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: postgresql
+        annotations:
+          summary: "PostgreSQL has high number of connections"
+          description: "{{ $value }} active connections"
+
+      - alert: PostgreSQLReplicationLag
+        expr: pg_replication_lag_seconds > 60
+        for: 5m
+        labels:
+          severity: warning
+          component: postgresql
+        annotations:
+          summary: "PostgreSQL replication lag is high"
+          description: "Replication lag is {{ $value }} seconds"
+
+      - alert: DatabaseStorageLow
+        expr: (pg_database_size_bytes / pg_settings_max_storage_bytes) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          component: postgresql
+        annotations:
+          summary: "Database storage is running low"
+          description: "Database is using {{ $value | humanizePercentage }} of available storage"
+
+      # Redis Alerts
+      - alert: RedisDown
+        expr: up{job="redis-email"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: "Redis cache is down"
+          description: "Redis has been down for more than 2 minutes"
+
+      - alert: RedisMemoryHigh
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis is using {{ $value | humanizePercentage }} of available memory"
+
+      - alert: RedisMemoryCritical
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: "Redis memory usage is critical"
+          description: "Redis is using {{ $value | humanizePercentage }} of memory - evicting keys"
+
+      # Panel Alerts
+      - alert: EmailPanelDown
+        expr: up{job="email-panel"} == 0
+        for: 3m
+        labels:
+          severity: warning
+          component: panel
+        annotations:
+          summary: "Email admin panel is down"
+          description: "Web panel has been unreachable for 3 minutes"
+
+      - alert: PanelHighErrorRate
+        expr: rate(http_requests_total{status_code=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: panel
+        annotations:
+          summary: "Panel has high error rate"
+          description: "More than 5% of requests are failing"
+
+      # Quarantine Alerts
+      - alert: QuarantineSizeHigh
+        expr: quarantine_size > 1000
+        for: 1h
+        labels:
+          severity: warning
+          component: quarantine
+        annotations:
+          summary: "Quarantine has many emails"
+          description: "{{ $value }} emails in quarantine for tenant {{ $labels.tenant_id }}"
+
+      - alert: QuarantineSizeCritical
+        expr: quarantine_size > 5000
+        for: 30m
+        labels:
+          severity: critical
+          component: quarantine
+        annotations:
+          summary: "Quarantine is critically full"
+          description: "{{ $value }} emails in quarantine - review and clean up"
+
+      # Multi-tenant Alerts
+      - alert: TenantEmailsBlocked
+        expr: rate(emails_processed_total{status="rejected"}[10m]) > 0.5
+        for: 15m
+        labels:
+          severity: warning
+          component: filtering
+        annotations:
+          summary: "High rejection rate for tenant"
+          description: "Tenant {{ $labels.tenant_id }} has >50% email rejection rate"
+
+      - alert: TenantNoActivity
+        expr: rate(emails_processed_total[1h]) == 0
+        for: 6h
+        labels:
+          severity: info
+          component: monitoring
+        annotations:
+          summary: "No email activity for tenant"
+          description: "Tenant {{ $labels.tenant_id }} hasn't processed emails in 6 hours"
+
+      # System Health
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes) < 0.15
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Disk space is running low"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining"
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes) < 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Disk space is critically low"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining - urgent action required"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% for 10 minutes"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.90
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanizePercentage }}"

@@ -1,0 +1,240 @@
+networks:
+  onlitec_email_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+
+volumes:
+  postfix_spool:
+  postfix_queue:
+  rspamd_data:
+  clamav_data:
+  redis_data:
+  postgres_data:
+  panel_logs:
+
+
+services:
+  # PostgreSQL 15 - Multi-Tenant Database
+  onlitec_emailprotect_db:
+    image: postgres:15-alpine
+    container_name: onlitec_emailprotect_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-emailprotect}
+      POSTGRES_USER: ${POSTGRES_USER:-emailprotect}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/seed_tenant.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    networks:
+      onlitec_email_network:
+        ipv4_address: 172.30.0.2
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-emailprotect}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis - Cache and Sessions
+  onlitec_redis:
+    image: redis:7-alpine
+    container_name: onlitec_redis
+    restart: unless-stopped
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      onlitec_email_network:
+        ipv4_address: 172.30.0.3
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ClamAV - Antivirus
+  onlitec_clamav:
+    build:
+      context: ./clamav
+      dockerfile: Dockerfile
+    container_name: onlitec_clamav
+    restart: unless-stopped
+    environment:
+      CLAMAV_NO_FRESHCLAM: ${CLAMAV_NO_FRESHCLAM:-false}
+    volumes:
+      - clamav_data:/var/lib/clamav
+      - ./clamav/clamd.conf:/etc/clamav/clamd.conf
+    networks:
+      onlitec_email_network:
+        ipv4_address: 172.30.0.4
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: [ "CMD", "/usr/bin/clamdscan", "--ping", "3" ]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+
+  # Rspamd - Antispam
+  onlitec_rspamd:
+    build:
+      context: ./rspamd
+      dockerfile: Dockerfile
+    container_name: onlitec_rspamd
+    restart: unless-stopped
+    depends_on:
+      onlitec_redis:
+        condition: service_healthy
+      onlitec_clamav:
+        condition: service_healthy
+      onlitec_emailprotect_db:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: onlitec_redis
+      REDIS_PORT: 6379
+      CLAMAV_HOST: onlitec_clamav
+      CLAMAV_PORT: 3310
+      POSTGRES_HOST: onlitec_emailprotect_db
+      POSTGRES_DB: ${POSTGRES_DB:-emailprotect}
+      POSTGRES_USER: ${POSTGRES_USER:-emailprotect}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+    volumes:
+      - rspamd_data:/var/lib/rspamd
+      - ./rspamd/local.d:/etc/rspamd/local.d
+      - ./rspamd/override.d:/etc/rspamd/override.d
+      - ./rspamd/scripts:/etc/rspamd/scripts
+      - panel_logs:/var/log/rspamd
+    networks:
+      onlitec_email_network:
+        ipv4_address: 172.30.0.5
+    ports:
+      - "11333:11333" # Normal worker
+      - "11334:11334" # Controller
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:11334/ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Postfix - SMTP Server
+  onlitec_postfix:
+    build:
+      context: ./postfix
+      dockerfile: Dockerfile
+    container_name: onlitec_postfix
+    restart: unless-stopped
+    hostname: ${MAIL_HOSTNAME:-mail.onlitec.local}
+    depends_on:
+      onlitec_rspamd:
+        condition: service_healthy
+      onlitec_emailprotect_db:
+        condition: service_healthy
+    environment:
+      MAIL_HOSTNAME: ${MAIL_HOSTNAME:-mail.onlitec.local}
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-onlitec.local}
+      POSTGRES_HOST: onlitec_emailprotect_db
+      POSTGRES_DB: ${POSTGRES_DB:-emailprotect}
+      POSTGRES_USER: ${POSTGRES_USER:-emailprotect}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+      RSPAMD_HOST: onlitec_rspamd
+      RSPAMD_PORT: 11333
+      TLS_CERT_FILE: ${TLS_CERT_FILE:-/etc/postfix/certs/cert.pem}
+      TLS_KEY_FILE: ${TLS_KEY_FILE:-/etc/postfix/certs/key.pem}
+    volumes:
+      - postfix_spool:/var/spool/postfix
+      - postfix_queue:/var/mail
+      - ./postfix/main.cf:/etc/postfix/main.cf
+      - ./postfix/master.cf:/etc/postfix/master.cf
+      - ./postfix/pgsql:/etc/postfix/pgsql
+      - ./certs:/etc/postfix/certs
+      - panel_logs:/var/log/mail
+    networks:
+      onlitec_email_network:
+        ipv4_address: 172.30.0.6
+    ports:
+      - "25:25" # SMTP
+      - "587:587" # Submission
+      - "465:465" # SMTPS
+    cap_add:
+      - NET_ADMIN
+      - SYS_PTRACE
+    healthcheck:
+      test: [ "CMD", "supervisorctl", "status", "postfix" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  # Web Panel - Admin Interface
+  onlitec_emailprotect_panel:
+    build:
+      context: ./panel
+      dockerfile: Dockerfile
+    container_name: onlitec_emailprotect_panel
+    restart: unless-stopped
+    depends_on:
+      onlitec_emailprotect_db:
+        condition: service_healthy
+      onlitec_redis:
+        condition: service_healthy
+      onlitec_rspamd:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 9080
+
+      # Database
+      DB_HOST: onlitec_emailprotect_db
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-emailprotect}
+      DB_USER: ${POSTGRES_USER:-emailprotect}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+
+      # Database (POSTGRES_* for pg Pool compatibility)
+      POSTGRES_HOST: onlitec_emailprotect_db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-emailprotect}
+      POSTGRES_USER: ${POSTGRES_USER:-emailprotect}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+
+      # Redis
+      REDIS_HOST: onlitec_redis
+      REDIS_PORT: 6379
+
+      # Rspamd API
+      RSPAMD_HOST: onlitec_rspamd
+      RSPAMD_PORT: 11334
+      RSPAMD_PASSWORD: ${RSPAMD_PASSWORD:-changeme123}
+
+      # Postfix
+      POSTFIX_HOST: onlitec_postfix
+
+      # Security
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-me}
+      SESSION_SECRET: ${SESSION_SECRET:-your-super-secret-session-key-change-me}
+
+      # Admin
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@onlitec.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme123!}
+    volumes:
+      - panel_logs:/var/log/panel
+      - ./panel/uploads:/app/uploads
+    networks:
+      onlitec_email_network:
+        ipv4_address: 172.30.0.7
+    ports:
+      - "9080:9080"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

@@ -1,0 +1,10 @@
+# Postfix PostgreSQL - Virtual Aliases Query
+# Query to get virtual alias mappings
+
+hosts = onlitec_emailprotect_db
+user = emailprotect
+password = 06uXjZe3HyyHm2KNTf9UoWA7P
+dbname = emailprotect
+
+# Query to get alias destination(s) for an email address
+query = SELECT destination FROM postfix_virtual_aliases WHERE source='%s'

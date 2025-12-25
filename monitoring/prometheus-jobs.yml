@@ -1,0 +1,46 @@
+# Jobs do Prometheus para Onlitec Email Protection
+# Adicione ao seu arquivo prometheus.yml existente
+
+scrape_configs:
+  # Rspamd Metrics
+  - job_name: 'rspamd'
+    static_configs:
+      - targets: ['onlitec_rspamd:11334']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Email Panel Metrics
+  - job_name: 'email-panel'
+    static_configs:
+      - targets: ['onlitec_emailprotect_panel:9080']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # PostgreSQL Exporter (se instalado)
+  - job_name: 'postgres-email'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'onlitec_emailprotect_db'
+
+  # Redis Exporter (se instalado)
+  - job_name: 'redis-email'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'onlitec_redis'
+
+  # Node Exporter (métricas do host)
+  - job_name: 'node-email-server'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'email-server'

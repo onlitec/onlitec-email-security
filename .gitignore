@@ -1,0 +1,33 @@
+# Environment
+.env
+*.env.local
+
+# Node.js
+node_modules/
+npm-debug.log
+
+# Build
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Data volumes
+data/
+clamav/data/
+database/data/
+
+# Certificates (keep example)
+certs/*.pem
+certs/*.key
+!certs/.gitkeep

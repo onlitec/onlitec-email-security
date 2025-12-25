@@ -1,0 +1,260 @@
+# Onlitec Email Protection - Postfix Multi-Tenant Configuration
+
+# ============================================
+# BASIC SETTINGS
+# ============================================
+
+# Hostname and domain
+myhostname = mail.onlitec.local
+mydomain = onlitec.local
+myorigin = $mydomain
+
+# Network and interfaces
+inet_interfaces = all
+inet_protocols = ipv4
+mynetworks = 127.0.0.0/8, 172.30.0.0/16
+
+# Banner
+smtpd_banner = $myhostname ESMTP
+
+# Compatibility
+compatibility_level = 3.6
+biff = no
+append_dot_mydomain = no
+readme_directory = no
+
+# ============================================
+# VIRTUAL DOMAINS (Multi-Tenant via PostgreSQL)
+# ============================================
+
+# Virtual domain maps
+virtual_mailbox_domains = pgsql:/etc/postfix/pgsql/virtual_domains.cf
+virtual_mailbox_maps = pgsql:/etc/postfix/pgsql/virtual_mailboxes.cf
+virtual_alias_maps = pgsql:/etc/postfix/pgsql/virtual_aliases.cf
+
+# Transport maps (relay configuration per domain)
+transport_maps = pgsql:/etc/postfix/pgsql/transport_maps.cf
+
+# SASL password for authenticated relay
+smtp_sasl_auth_enable = yes
+smtp_sasl_password_maps = pgsql:/etc/postfix/pgsql/sasl_password.cf
+smtp_sasl_security_options = noanonymous
+smtp_sasl_mechanism_filter = plain, login
+
+# Default fallback
+default_transport = smtp
+fallback_transport = smtp
+
+# Virtual transport (se não houver relay configurado)
+virtual_transport = lmtp:unix:private/dovecot-lmtp
+virtual_mailbox_base = /var/mail
+
+# ============================================
+# SMTP CLIENT RESTRICTIONS
+# ============================================
+
+# Relay restrictions
+smtpd_relay_restrictions = 
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    defer_unauth_destination
+
+# Recipient restrictions
+smtpd_recipient_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_non_fqdn_recipient,
+    reject_unknown_recipient_domain,
+    reject_unauth_destination,
+    check_policy_service inet:onlitec_rspamd:11333
+
+# Sender restrictions
+smtpd_sender_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_non_fqdn_sender,
+    reject_unknown_sender_domain
+
+# HELO restrictions
+smtpd_helo_required = yes
+smtpd_helo_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_invalid_helo_hostname,
+    reject_non_fqdn_helo_hostname,
+    reject_unknown_helo_hostname
+
+# Client restrictions
+smtpd_client_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_rbl_client zen.spamhaus.org,
+    reject_rbl_client bl.spamcop.net
+
+# ============================================
+# SASL AUTHENTICATION
+# ============================================
+
+# Enable SASL
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_security_options = noanonymous
+smtpd_sasl_local_domain = $mydomain
+broken_sasl_auth_clients = yes
+
+# ============================================
+# TLS/SSL CONFIGURATION
+# ============================================
+
+# TLS parameters
+smtpd_use_tls = yes
+smtpd_tls_cert_file = /etc/postfix/certs/cert.pem
+smtpd_tls_key_file = /etc/postfix/certs/key.pem
+smtpd_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+
+# TLS security
+smtpd_tls_security_level = may
+smtpd_tls_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+smtpd_tls_ciphers = high
+smtpd_tls_mandatory_ciphers = high
+smtpd_tls_exclude_ciphers = aNULL, eNULL, EXPORT, DES, RC4, MD5, PSK, aECDH, EDH-DSS-DES-CBC3-SHA, EDH-RSA-DES-CBC3-SHA, KRB5-DES, CBC3-SHA
+smtpd_tls_dh1024_param_file = /etc/postfix/certs/dh2048.pem
+
+# TLS logging
+smtpd_tls_loglevel = 1
+smtpd_tls_received_header = yes
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+
+# TLS for client
+smtp_tls_security_level = may
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+smtp_tls_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+smtp_tls_ciphers = high
+
+# ============================================
+# RSPAMD INTEGRATION
+# ============================================
+
+# Milter configuration
+smtpd_milters = inet:onlitec_rspamd:11332
+non_smtpd_milters = inet:onlitec_rspamd:11332
+
+# Milter settings
+milter_protocol = 6
+milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_authen}
+milter_default_action = accept
+milter_connect_timeout = 30s
+milter_command_timeout = 30s
+
+# ============================================
+# MESSAGE SIZE AND LIMITS
+# ============================================
+
+# Size limits (50MB for messages, 1GB for mailboxes)
+message_size_limit = 52428800
+mailbox_size_limit = 1073741824
+virtual_mailbox_limit = 1073741824
+
+# Queue limits
+maximal_queue_lifetime = 5d
+bounce_queue_lifetime = 5d
+minimal_backoff_time = 300s
+maximal_backoff_time = 4000s
+
+# ============================================
+# RATE LIMITING
+# ============================================
+
+# Anvil settings (rate limiting)
+anvil_rate_time_unit = 60s
+smtpd_client_connection_count_limit = 50
+smtpd_client_connection_rate_limit = 100
+smtpd_client_message_rate_limit = 100
+smtpd_client_recipient_rate_limit = 200
+smtpd_client_event_limit_exceptions = $mynetworks
+
+# ============================================
+# HEADER CHECKS
+# ============================================
+
+# Header checks
+header_checks = regexp:/etc/postfix/header_checks
+mime_header_checks = regexp:/etc/postfix/mime_header_checks
+
+# ============================================
+# CONTENT FILTERING
+# ============================================
+
+# Content filter (Rspamd proxy)
+content_filter = smtp-amavis:[onlitec_rspamd]:10024
+
+# ============================================
+# LOCAL DELIVERY
+# ============================================
+
+# Disable local delivery (virtual only)
+local_recipient_maps =
+local_transport = error:local delivery is disabled
+
+# ============================================
+# ALIASES
+# ============================================
+
+alias_maps = hash:/etc/aliases
+alias_database = hash:/etc/aliases
+
+# ============================================
+# LOGGING
+# ============================================
+
+# Mail logging
+maillog_file = /var/log/mail/mail.log
+maillog_file_prefixes = /var/log
+# maillog_file_permissions = 0600  # Not supported in this Postfix version
+
+# ============================================
+# PERFORMANCE TUNING
+# ============================================
+
+# Queue management
+queue_run_delay = 300s
+transport_retry_time = 60s
+qmgr_message_active_limit = 20000
+qmgr_message_recipient_limit = 20000
+
+# SMTP timeouts
+smtp_connect_timeout = 30s
+smtp_helo_timeout = 60s
+smtp_mail_timeout = 60s
+smtp_rcpt_timeout = 60s
+# smtp_data_timeout = 120s  # Replaced by smtp_data_init_timeout + smtp_data_xfer_timeout
+smtp_quit_timeout = 60s
+
+# SMTPD timeouts
+smtpd_timeout = 300s
+smtpd_soft_error_limit = 10
+smtpd_hard_error_limit = 20
+smtpd_error_sleep_time = 1s
+
+# ============================================
+# MISC SETTINGS
+# ============================================
+
+# Disable verp
+disable_verp_bounces = yes
+
+# Email address formatting
+allow_percent_hack = no
+swap_bangpath = no
+
+# Bounce settings
+bounce_notice_recipient = postmaster
+
+# DSN settings
+notify_classes = resource, software
+
+# Unknown settings
+unknown_local_recipient_reject_code = 550
+unknown_virtual_mailbox_reject_code = 550

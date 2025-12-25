@@ -1,0 +1,97 @@
+// JWT authentication middleware
+const jwt = require('jsonwebtoken');
+const { AppError } = require('./errorHandler');
+const db = require('../config/database');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
+
+const generateToken = (payload) => {
+    return jwt.sign(payload, JWT_SECRET, {
+        expiresIn: '24h'
+    });
+};
+
+const verifyToken = (token) => {
+    try {
+        return jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+        return null;
+    }
+};
+
+const authMiddleware = async (req, res, next) => {
+    try {
+        // Get token from header
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            throw new AppError('No token provided', 401);
+        }
+
+        const token = authHeader.split(' ')[1];
+        const decoded = verifyToken(token);
+
+        if (!decoded) {
+            throw new AppError('Invalid or expired token', 401);
+        }
+
+        // Get user from database
+        const result = await db.query(
+            'SELECT id, email, role, tenant_id FROM users WHERE id = $1 AND deleted_at IS NULL',
+            [decoded.userId]
+        );
+
+        if (result.rows.length === 0) {
+            throw new AppError('User not found', 404);
+        }
+
+        req.user = result.rows[0];
+        next();
+    } catch (err) {
+        next(err);
+    }
+};
+
+const requireRole = (...roles) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return next(new AppError('Unauthorized', 401));
+        }
+
+        if (!roles.includes(req.user.role)) {
+            return next(new AppError('Forbidden - insufficient permissions', 403));
+        }
+
+        next();
+    };
+};
+
+const requireTenant = async (req, res, next) => {
+    try {
+        if (!req.user) {
+            throw new AppError('Unauthorized', 401);
+        }
+
+        // Admin can access all tenants
+        if (req.user.role === 'admin') {
+            return next();
+        }
+
+        // Regular users can only access their tenant
+        const tenantId = req.params.tenantId || req.body.tenant_id;
+        if (tenantId && tenantId !== req.user.tenant_id) {
+            throw new AppError('Forbidden - cannot access other tenant data', 403);
+        }
+
+        next();
+    } catch (err) {
+        next(err);
+    }
+};
+
+module.exports = {
+    generateToken,
+    verifyToken,
+    authMiddleware,
+    requireRole,
+    requireTenant
+};

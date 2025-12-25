@@ -1,0 +1,10 @@
+# Postfix PostgreSQL - Virtual Domains Query
+# Query to get list of virtual domains from database
+
+hosts = onlitec_emailprotect_db
+user = emailprotect
+password = 06uXjZe3HyyHm2KNTf9UoWA7P
+dbname = emailprotect
+
+# Query to check if domain exists and is active
+query = SELECT domain FROM postfix_virtual_domains WHERE domain='%s'

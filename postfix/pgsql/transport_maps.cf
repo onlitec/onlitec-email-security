@@ -1,0 +1,8 @@
+# Postfix PostgreSQL Transport Maps
+# Mapeia domínios virtuais para método de entrega
+
+user = emailprotect
+password = 06uXjZe3HyyHm2KNTf9UoWA7P
+hosts = onlitec_emailprotect_db
+dbname = emailprotect
+query = SELECT transport FROM postfix_transport_maps WHERE domain='%s' LIMIT 1

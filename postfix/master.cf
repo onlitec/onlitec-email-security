@@ -1,0 +1,192 @@
+# Onlitec Email Protection - Postfix Master Configuration
+# ==========================================================================
+# service type  private unpriv  chroot  wakeup  maxproc command + args
+#               (yes)   (yes)   (no)    (never) (100)
+# ==========================================================================
+
+# SMTP service (port 25)
+smtp      inet  n       -       n       -       -       smtpd
+  -o smtpd_tls_security_level=may
+  -o smtpd_sasl_auth_enable=yes
+  -o smtpd_client_restrictions=permit_sasl_authenticated,reject
+  -o smtpd_recipient_restrictions=permit_mynetworks,permit_sasl_authenticated,reject_unauth_destination
+
+# Submission service (port 587)
+submission inet n       -       n       -       -       smtpd
+  -o syslog_name=postfix/submission
+  -o smtpd_tls_security_level=encrypt
+  -o smtpd_sasl_auth_enable=yes
+  -o smtpd_sasl_type=dovecot
+  -o smtpd_sasl_path=private/auth
+  -o smtpd_sasl_security_options=noanonymous
+  -o smtpd_client_restrictions=permit_sasl_authenticated,reject
+  -o smtpd_sender_restrictions=reject_sender_login_mismatch
+  -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
+  -o milter_macro_daemon_name=ORIGINATING
+  -o smtpd_milters=inet:onlitec_rspamd:11332
+  -o cleanup_service_name=submission-header-cleanup
+
+# SMTPS service (port 465)
+smtps     inet  n       -       n       -       -       smtpd
+  -o syslog_name=postfix/smtps
+  -o smtpd_tls_wrappermode=yes
+  -o smtpd_sasl_auth_enable=yes
+  -o smtpd_sasl_type=dovecot
+  -o smtpd_sasl_path=private/auth
+  -o smtpd_client_restrictions=permit_sasl_authenticated,reject
+  -o smtpd_sender_restrictions=reject_sender_login_mismatch
+  -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
+  -o milter_macro_daemon_name=ORIGINATING
+  -o smtpd_milters=inet:onlitec_rspamd:11332
+  -o cleanup_service_name=submission-header-cleanup
+
+# Cleanup service for submission
+submission-header-cleanup unix n - n    -       0       cleanup
+  -o header_checks=regexp:/etc/postfix/submission_header_checks
+  -o nested_header_checks=
+
+# Pickup service
+pickup    unix  n       -       n       60      1       pickup
+  -o content_filter=
+  -o receive_override_options=no_header_body_checks
+
+# Cleanup service (default)
+cleanup   unix  n       -       n       -       0       cleanup
+
+# Queue manager
+qmgr      unix  n       -       n       300     1       qmgr
+
+# Transport maps lookup
+tlsmgr    unix  -       -       n       1000?   1       tlsmgr
+
+# Rewrite service
+rewrite   unix  -       -       n       -       -       trivial-rewrite
+
+# Bounce service
+bounce    unix  -       -       n       -       0       bounce
+
+# Defer service
+defer     unix  -       -       n       -       0       bounce
+
+# Trace service
+trace     unix  -       -       n       -       0       bounce
+
+# Verify service
+verify    unix  -       -       n       -       1       verify
+
+# Flush service
+flush     unix  n       -       n       1000?   0       flush
+
+# Proxymap service
+proxymap  unix  -       -       n       -       -       proxymap
+
+# Proxywrite service
+proxywrite unix -       -       n       -       1       proxymap
+
+# SMTP client
+smtp      unix  -       -       n       -       -       smtp
+
+# Relay service
+relay     unix  -       -       n       -       -       smtp
+  -o syslog_name=postfix/$service_name
+  -o smtp_helo_timeout=5
+  -o smtp_connect_timeout=5
+
+# Showq service
+showq     unix  n       -       n       -       -       showq
+
+# Error service
+error     unix  -       -       n       -       -       error
+
+# Retry service
+retry     unix  -       -       n       -       -       error
+
+# Discard service
+discard   unix  -       -       n       -       -       discard
+
+# Local delivery (disabled for virtual-only setup)
+local     unix  -       n       n       -       -       local
+
+# Virtual delivery
+virtual   unix  -       n       n       -       -       virtual
+
+# LMTP service
+lmtp      unix  -       -       n       -       -       lmtp
+
+# Anvil service (connection rate limiting)
+anvil     unix  -       -       n       -       1       anvil
+
+# Scanner service
+scache    unix  -       -       n       -       1       scache
+
+# Postscreen services (optional, for additional protection)
+#smtp      inet  n       -       n       -       1       postscreen
+#smtpd     pass  -       -       n       -       -       smtpd
+#dnsblog   unix  -       -       n       -       0       dnsblog
+#tlsproxy  unix  -       -       n       -       0       tlsproxy
+
+# ==========================================
+# Rspamd Integration (Content Filter)
+# ==========================================
+
+# Scan service (from Postfix to Rspamd)
+smtp-amavis unix -      -       n       -       2       smtp
+  -o smtp_data_done_timeout=1200
+  -o smtp_send_xforward_command=yes
+  -o disable_dns_lookups=yes
+  -o max_use=20
+
+# Re-injection (from Rspamd back to Postfix)
+127.0.0.1:10025 inet n  -       n       -       -       smtpd
+  -o content_filter=
+  -o smtpd_delay_reject=no
+  -o smtpd_client_restrictions=permit_mynetworks,reject
+  -o smtpd_helo_restrictions=
+  -o smtpd_sender_restrictions=
+  -o smtpd_recipient_restrictions=permit_mynetworks,reject
+  -o smtpd_data_restrictions=reject_unauth_pipelining
+  -o smtpd_end_of_data_restrictions=
+  -o smtpd_restriction_classes=
+  -o mynetworks=127.0.0.0/8,[::ffff:127.0.0.0]/104,[::1]/128
+  -o smtpd_error_sleep_time=0
+  -o smtpd_soft_error_limit=1001
+  -o smtpd_hard_error_limit=1000
+  -o smtpd_client_connection_count_limit=0
+  -o smtpd_client_connection_rate_limit=0
+  -o receive_override_options=no_header_body_checks,no_unknown_recipient_checks,no_milters
+  -o local_header_rewrite_clients=
+
+# ==========================================
+# Maildrop (if using)
+# ==========================================
+maildrop  unix  -       n       n       -       -       pipe
+  flags=DRhu user=vmail argv=/usr/bin/maildrop -d ${recipient}
+
+# ==========================================
+# Cyrus (if using)
+# ==========================================
+#cyrus     unix  -       n       n       -       -       pipe
+#  user=cyrus argv=/cyrus/bin/deliver -e -r ${sender} -m ${extension} ${user}
+
+# ==========================================
+# Old style of delivery
+# ==========================================
+#old-cyrus unix  -       n       n       -       -       pipe
+#  flags=R user=cyrus argv=/cyrus/bin/deliver -e -m ${extension} ${user}
+
+# ==========================================
+# Spam training (if using)
+# ==========================================
+#ifmail    unix  -       n       n       -       -       pipe
+#  flags=F user=ftn argv=/usr/lib/ifmail/ifmail -r $nexthop ($recipient)
+
+#bsmtp     unix  -       n       n       -       -       pipe
+#  flags=Fq. user=bsmtp argv=/usr/lib/bsmtp/bsmtp -t$nexthop -f$sender $recipient
+
+#scalemail-backend unix  -  n    n       -       2       pipe
+#  flags=R user=scalemail argv=/usr/lib/scalemail/bin/scalemail-store ${nexthop} ${user} ${extension}
+
+#mailman   unix  -       n       n       -       -       pipe
+#  flags=FR user=list argv=/usr/lib/mailman/bin/postfix-to-mailman.py
+#  ${nexthop} ${user}
+postlog   unix-dgram n  -       n       -       1       postlogd

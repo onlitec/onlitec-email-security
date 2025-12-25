@@ -1,0 +1,10 @@
+# Postfix PostgreSQL - Virtual Mailboxes Query
+# Query to get virtual mailbox destinations
+
+hosts = onlitec_emailprotect_db
+user = emailprotect
+password = 06uXjZe3HyyHm2KNTf9UoWA7P
+dbname = emailprotect
+
+# Query to get mailbox destination for an email address
+query = SELECT destination FROM postfix_virtual_mailboxes WHERE email='%s'

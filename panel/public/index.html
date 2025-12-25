@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onlitec Email Protection - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 24px;
+        }
+
+        .tabs {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-buttons {
+            display: flex;
+            background: #f7fafc;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a5568;
+            transition: all 0.3s;
+        }
+
+        .tab-button:hover {
+            background: #edf2f7;
+        }
+
+        .tab-button.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-content {
+            padding: 20px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        input,
+        select {
+            padding: 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #edf2f7;
+            font-weight: 600;
+        }
+
+        .status-active {
+            color: #48bb78;
+            font-weight: 600;
+        }
+
+        .status-inactive {
+            color: #f56565;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Onlitec Email Protection - Painel Administrativo</h1>
+            <p style="color: #718096; margin-top: 5px;">Gestão Multi-Tenant de Proteção de Email</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="showTab('tenants')">👥 Tenants</button>
+                <button class="tab-button" onclick="showTab('domains')">🌐 Domínios</button>
+                <button class="tab-button" onclick="showTab('users')">👤 Usuários</button>
+                <button class="tab-button" onclick="showTab('stats')">📊 Estatísticas</button>
+            </div>
+
+            <!-- TAB: TENANTS -->
+            <div id="tenants" class="tab-content active">
+                <h2 style="margin-bottom: 20px;">Gerenciar Tenants (Clientes)</h2>
+                <div id="alert-area"></div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 15px;">➕ Criar Novo Tenant</h3>
+                    <form id="form-create-tenant" onsubmit="createTenant(event)">
+                        <div class="form-group">
+                            <label>Nome da Empresa:</label>
+                            <input type="text" id="tenant-name" placeholder="Ex: Empresa Ltda" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Slug (identificador único):</label>
+                            <input type="text" id="tenant-slug" placeholder="Ex: empresa-ltda" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Domínio Principal:</label>
+                            <input type="text" id="tenant-domain" placeholder="Ex: empresa.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email do Admin:</label>
+                            <input type="email" id="tenant-admin" placeholder="admin@empresa.com" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Criar Tenant</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 15px;">📋 Lista de Tenants</h3>
+                    <button class="btn btn-primary" onclick="loadTenants()" style="margin-bottom: 15px;">🔄
+                        Atualizar</button>
+                    <div id="tenants-list">
+                        <p style="text-align: center; color: #718096;">Carregue os dados clicando em "Atualizar"</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: DOMAINS -->
+            <div id="domains" class="tab-content">
+                <h2 style="margin-bottom: 20px;">Gerenciar Domínios</h2>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 15px;">➕ Adicionar Domínio</h3>
+                    <form id="form-add-domain" onsubmit="addDomain(event)">
+                        <div class="form-group">
+                            <label>Tenant:</label>
+                            <select id="domain-tenant" required>
+                                <option value="">Carregue os tenants primeiro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Domínio:</label>
+                            <input type="text" id="domain-name" placeholder="Ex: novodominio.com" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Adicionar Domínio</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 15px;">📋 Lista de Domínios</h3>
+                    <button class="btn btn-primary" onclick="loadDomains()" style="margin-bottom: 15px;">🔄
+                        Atualizar</button>
+                    <div id="domains-list">
+                        <p style="text-align: center; color: #718096;">Carregue os dados clicando em "Atualizar"</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: USERS -->
+            <div id="users" class="tab-content">
+                <h2 style="margin-bottom: 20px;">Gerenciar Usuários</h2>
+                <div class="card">
+                    <h3>📋 Lista de Usuários</h3>
+                    <p style="color: #718096; margin-top: 10px;">Em desenvolvimento...</p>
+                </div>
+            </div>
+
+            <!-- TAB: STATS -->
+            <div id="stats" class="tab-content">
+                <h2 style="margin-bottom: 20px;">Estatísticas do Sistema</h2>
+                <div class="card">
+                    <h3>📊 Dashboard</h3>
+                    <p style="color: #718096; margin-top: 10px;">Conecte-se ao backend para ver estatísticas em tempo
+                        real.</p>
+                    <button class="btn btn-primary" onclick="loadStats()">🔄 Carregar Estatísticas</button>
+                    <div id="stats-content" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showAlert(message, type = 'success') {
+            const alertArea = document.getElementById('alert-area');
+            alertArea.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => alertArea.innerHTML = '', 5000);
+        }
+
+        // CREATE TENANT - Real API
+        async function createTenant(e) {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('tenant-name').value,
+                slug: document.getElementById('tenant-slug').value,
+                domain: document.getElementById('tenant-domain').value,
+                admin_email: document.getElementById('tenant-admin').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/tenants`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert(`✅ Tenant criado! Senha: ${result.data.admin_password}`);
+                    document.getElementById('form-create-tenant').reset();
+                    loadTenants(); // Atualizar lista
+                } else {
+                    showAlert(`❌ Erro: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        // LOAD TENANTS - Real API
+        async function loadTenants() {
+            try {
+                const response = await fetch(`${API_URL}/tenants`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const tenants = result.data;
+                    const html = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Slug</th>
+                                    <th>Status</th>
+                                    <th>Domínios</th>
+                                    <th>Usuários</th>
+                                    <th>Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tenants.map(t => `
+                                    <tr>
+                                        <td><strong>${t.name}</strong></td>
+                                        <td>${t.slug}</td>
+                                        <td class="status-active">✓ ${t.status}</td>
+                                        <td>${t.domains_count || 0}</td>
+                                        <td>${t.users_count || 0}</td>
+                                        <td>${new Date(t.created_at).toLocaleDateString()}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    document.getElementById('tenants-list').innerHTML = html;
+
+                    // Atualizar dropdown de tenants
+                    const select = document.getElementById('domain-tenant');
+                    select.innerHTML = '<option value="">Selecione um tenant</option>' +
+                        tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+                } else {
+                    document.getElementById('tenants-list').innerHTML =
+                        `<p style="color: red;">Erro ao carregar tenants</p>`;
+                }
+            } catch (error) {
+                document.getElementById('tenants-list').innerHTML =
+                    `<p style="color: red;">Erro: ${error.message}</p>`;
+            }
+        }
+
+        // LO AD DOMAINS - Real API
+        async function loadDomains() {
+            try {
+                const response = await fetch(`${API_URL}/domains`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const domains = result.data;
+                    const html = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Domínio</th>
+                                    <th>Tenant</th>
+                                    <th>Status</th>
+                                    <th>Verificado</th>
+                                    <th>Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${domains.map(d => `
+                                    <tr>
+                                        <td><strong>${d.domain}</strong></td>
+                                        <td>${d.tenant_name}</td>
+                                        <td class="status-active">✓ ${d.status}</td>
+                                        <td>${d.verified ? '✓ Sim' : '⏳ Não'}</td>
+                                        <td>${new Date(d.created_at).toLocaleDateString()}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    document.getElementById('domains-list').innerHTML = html;
+                } else {
+                    document.getElementById('domains-list').innerHTML =
+                        `<p style="color: red;">Erro ao carregar domínios</p>`;
+                }
+            } catch (error) {
+                document.getElementById('domains-list').innerHTML =
+                    `<p style="color: red;">Erro: ${error.message}</p>`;
+            }
+        }
+
+        // ADD DOMAIN - Real API
+        async function addDomain(e) {
+            e.preventDefault();
+            const data = {
+                tenant_id: document.getElementById('domain-tenant').value,
+                domain: document.getElementById('domain-name').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/domains`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('✅ Domínio adicionado!');
+                    document.getElementById('form-add-domain').reset();
+                    loadDomains(); // Atualizar lista
+                } else {
+                    showAlert(`❌ Erro: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        // LOAD STATS - Real API
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const stats = result.data;
+                    document.getElementById('stats-content').innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 32px; font-weight: bold; color: #667eea;">${stats.tenants}</div>
+                                <div style="color: #718096; margin-top: 5px;">Tenants Ativos</div>
+                            </div>
+                            <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 32px; font-weight: bold; color: #48bb78;">${stats.domains}</div>
+                                <div style="color: #718096; margin-top: 5px;">Domínios</div>
+                            </div>
+                            <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 32px; font-weight: bold; color: #f6ad55;">${stats.emails_today}</div>
+                                <div style="color: #718096; margin-top: 5px;">Emails Hoje</div>
+                            </div>
+                            <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 32px; font-weight: bold; color: #fc8181;">${stats.spam_blocked}</div>
+                                <div style="color: #718096; margin-top: 5px;">Spam Bloqueado</div>
+                            </div>
+                            <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 32px; font-weight: bold; color: #ed8936;">${stats.quarantine}</div>
+                                <div style="color: #718096; margin-top: 5px;">Em Quarentena</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('stats-content').innerHTML =
+                        `<p style="color: red;">Erro ao carregar estatísticas</p>`;
+                }
+            } catch (error) {
+                document.getElementById('stats-content').innerHTML =
+                    `<p style="color: red;">Erro: ${error.message}</p>`;
+            }
+        }
+
+        // Auto-load on page load
+        window.onload = () => {
+            console.log('🛡️ Painel Web Conectado ao Backend!');
+            loadTenants(); // Carregar tenants automaticamente
+        };
+    </script>
+</body>
+
+</html>

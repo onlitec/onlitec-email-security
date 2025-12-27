@@ -130,7 +130,7 @@ export default function Aliases() {
                                 <label className="block text-sm font-medium text-gray-700">{t('domains.tenant')}</label>
                                 <select value={form.tenant_id} onChange={(e) => setForm({ ...form, tenant_id: e.target.value, domain_id: '' })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
-                                    <option value="">{t('users.selectTenant', 'Selecione o inquilino...')}</option>
+                                    <option value="">{t('users.selectTenant', 'Selecione o cliente...')}</option>
                                     {tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}
                                 </select>
                             </div>

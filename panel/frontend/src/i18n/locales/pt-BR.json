@@ -28,7 +28,7 @@
     },
     "nav": {
         "dashboard": "Painel",
-        "tenants": "Inquilinos",
+        "tenants": "Clientes",
         "domains": "Domínios",
         "users": "Usuários",
         "aliases": "Aliases",
@@ -48,7 +48,7 @@
         "emailsToday": "Emails Hoje",
         "spamBlocked": "Spam Bloqueado",
         "virusDetected": "Vírus Detectado",
-        "activeTenants": "Inquilinos Ativos",
+        "activeTenants": "Clientes Ativos",
         "totalDomains": "Total de Domínios",
         "totalUsers": "Total de Usuários",
         "quarantined": "Em Quarentena",
@@ -75,16 +75,16 @@
         "allFeaturesOperational": "Todas as funcionalidades de proteção de email estão operacionais."
     },
     "tenants": {
-        "title": "Inquilinos",
+        "title": "Clientes",
         "subtitle": "Gerenciar organizações e seus limites",
-        "addTenant": "Adicionar Inquilino",
-        "editTenant": "Editar Inquilino",
+        "addTenant": "Adicionar Cliente",
+        "editTenant": "Editar Cliente",
         "name": "Nome",
         "slug": "Slug",
         "maxDomains": "Máx. Domínios",
         "maxUsers": "Máx. Usuários",
         "storage": "Armazenamento",
-        "noTenants": "Nenhum inquilino encontrado"
+        "noTenants": "Nenhum cliente encontrado"
     },
     "domains": {
         "title": "Domínios",
@@ -92,7 +92,7 @@
         "addDomain": "Adicionar Domínio",
         "editDomain": "Editar Domínio",
         "domain": "Domínio",
-        "tenant": "Inquilino",
+        "tenant": "Cliente",
         "relay": "Relay",
         "dkim": "DKIM",
         "noDomains": "Nenhum domínio encontrado",
@@ -136,7 +136,7 @@
     },
     "policies": {
         "title": "Políticas de Spam",
-        "subtitle": "Configurar limites de filtragem de spam por inquilino",
+        "subtitle": "Configurar limites de filtragem de spam por cliente",
         "addPolicy": "Adicionar Política",
         "editPolicy": "Editar Política",
         "name": "Nome",

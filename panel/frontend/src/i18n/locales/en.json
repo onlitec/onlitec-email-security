@@ -28,7 +28,7 @@
     },
     "nav": {
         "dashboard": "Dashboard",
-        "tenants": "Tenants",
+        "tenants": "Clients",
         "domains": "Domains",
         "users": "Users",
         "aliases": "Aliases",
@@ -48,7 +48,7 @@
         "emailsToday": "Emails Today",
         "spamBlocked": "Spam Blocked",
         "virusDetected": "Virus Detected",
-        "activeTenants": "Active Tenants",
+        "activeTenants": "Active Clients",
         "totalDomains": "Total Domains",
         "totalUsers": "Total Users",
         "quarantined": "Quarantined",
@@ -75,16 +75,16 @@
         "allFeaturesOperational": "All email protection features are operational."
     },
     "tenants": {
-        "title": "Tenants",
+        "title": "Clients",
         "subtitle": "Manage organizations and their limits",
-        "addTenant": "Add Tenant",
-        "editTenant": "Edit Tenant",
+        "addTenant": "Add Client",
+        "editTenant": "Edit Client",
         "name": "Name",
         "slug": "Slug",
         "maxDomains": "Max Domains",
         "maxUsers": "Max Users",
         "storage": "Storage",
-        "noTenants": "No tenants found"
+        "noTenants": "No clients found"
     },
     "domains": {
         "title": "Domains",
@@ -92,7 +92,7 @@
         "addDomain": "Add Domain",
         "editDomain": "Edit Domain",
         "domain": "Domain",
-        "tenant": "Tenant",
+        "tenant": "Client",
         "relay": "Relay",
         "dkim": "DKIM",
         "noDomains": "No domains found",
@@ -136,7 +136,7 @@
     },
     "policies": {
         "title": "Spam Policies",
-        "subtitle": "Configure spam filtering thresholds per tenant",
+        "subtitle": "Configure spam filtering thresholds per client",
         "addPolicy": "Add Policy",
         "editPolicy": "Edit Policy",
         "name": "Name",

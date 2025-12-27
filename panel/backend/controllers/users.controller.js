@@ -13,29 +13,27 @@ const pool = new Pool({
 // List all users
 exports.list = async (req, res) => {
     try {
-        const { page = 1, limit = 20, tenant_id, domain_id, status, search } = req.query;
+        const { page = 1, limit = 20, tenant_id, status, search } = req.query;
         const offset = (page - 1) * limit;
 
         let query = `
-            SELECT u.id, u.email, u.tenant_id, u.domain_id, u.status, 
-                   u.quota_mb, u.used_mb, u.created_at,
-                   t.name as tenant_name, d.domain as domain_name
+            SELECT u.id, u.email, u.tenant_id, u.full_name, u.role, u.status, 
+                   u.last_login, u.created_at,
+                   t.name as tenant_name
             FROM users u
             LEFT JOIN tenants t ON u.tenant_id = t.id
-            LEFT JOIN domains d ON u.domain_id = d.id
             WHERE u.deleted_at IS NULL
         `;
         const params = [];
         let paramIndex = 1;
 
         if (tenant_id) { query += ` AND u.tenant_id = $${paramIndex++}`; params.push(tenant_id); }
-        if (domain_id) { query += ` AND u.domain_id = $${paramIndex++}`; params.push(domain_id); }
         if (status) { query += ` AND u.status = $${paramIndex++}`; params.push(status); }
         if (search) { query += ` AND u.email ILIKE $${paramIndex++}`; params.push(`%${search}%`); }
 
         const countQuery = query.replace(/SELECT .+ FROM/, 'SELECT COUNT(*) as total FROM');
         const countResult = await pool.query(countQuery, params);
-        const total = parseInt(countResult.rows[0].total);
+        const total = countResult.rows && countResult.rows[0] ? parseInt(countResult.rows[0].total) : 0;
 
         query += ` ORDER BY u.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
         params.push(parseInt(limit), offset);

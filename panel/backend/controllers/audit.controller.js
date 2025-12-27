@@ -35,7 +35,7 @@ exports.list = async (req, res) => {
 
         const countQuery = query.replace(/SELECT .+ FROM/, 'SELECT COUNT(*) as total FROM');
         const countResult = await pool.query(countQuery, params);
-        const total = parseInt(countResult.rows[0].total);
+        const total = countResult.rows && countResult.rows[0] ? parseInt(countResult.rows[0].total) : 0;
 
         query += ` ORDER BY a.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
         params.push(parseInt(limit), offset);

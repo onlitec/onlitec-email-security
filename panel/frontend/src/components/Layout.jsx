@@ -30,6 +30,7 @@ export default function Layout({ children, setAuth }) {
         { name: t('nav.quarantine'), href: '/quarantine' },
         { name: t('nav.logs'), href: '/logs' },
         { name: t('nav.audit'), href: '/audit' },
+        { name: t('nav.services'), href: '/services' },
         { name: t('nav.settings'), href: '/settings' },
         { name: t('nav.help'), href: '/help' }
     ]
@@ -54,8 +55,8 @@ export default function Layout({ children, setAuth }) {
                                         key={item.href}
                                         to={item.href}
                                         className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive(item.href)
-                                                ? 'border-blue-500 text-gray-900'
-                                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                            ? 'border-blue-500 text-gray-900'
+                                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                             }`}
                                     >
                                         {item.name}

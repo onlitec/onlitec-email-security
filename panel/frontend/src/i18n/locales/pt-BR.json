@@ -38,6 +38,7 @@
         "audit": "Auditoria",
         "settings": "Configurações",
         "help": "Ajuda",
+        "services": "Serviços",
         "profile": "Perfil",
         "logout": "Sair"
     },
@@ -246,5 +247,35 @@
         "select": "Idioma",
         "pt": "Português (Brasil)",
         "en": "English"
+    },
+    "services": {
+        "title": "Status dos Serviços",
+        "subtitle": "Monitoramento em tempo real dos serviços do sistema",
+        "online": "Online",
+        "offline": "Offline",
+        "degraded": "Degradado",
+        "unknown": "Desconhecido",
+        "clamav": "Antivírus",
+        "rspamd": "Antispam",
+        "postfix": "Servidor SMTP",
+        "redis": "Cache",
+        "postgresql": "Banco de Dados",
+        "port": "Porta",
+        "ports": "Portas",
+        "refresh": "Atualizar",
+        "autoRefresh": "Auto-atualizar",
+        "lastUpdate": "Última atualização",
+        "allServicesOnline": "Todos os serviços estão online",
+        "someServicesOffline": "Alguns serviços apresentam problemas",
+        "criticalIssues": "Problemas críticos detectados",
+        "metrics": "Métricas",
+        "databaseSize": "Tamanho do Banco",
+        "activeConnections": "Conexões Ativas",
+        "mailStats": "Estatísticas de Email (24h)",
+        "totalProcessed": "Total Processados",
+        "delivered": "Entregues",
+        "rejected": "Rejeitados",
+        "spam": "Spam",
+        "infoMessage": "Os serviços são verificados a cada 30 segundos quando a atualização automática está ativada."
     }
 }

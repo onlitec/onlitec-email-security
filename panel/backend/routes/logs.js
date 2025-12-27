@@ -3,6 +3,9 @@ const router = express.Router();
 const logsController = require('../controllers/logs.controller');
 const { authenticateToken } = require('../middleware/auth.middleware');
 
+// POST /api/logs/ingest - Ingest logs (Internal/Rspamd)
+router.post('/ingest', logsController.ingest);
+
 router.use(authenticateToken);
 
 // GET /api/logs - List mail logs

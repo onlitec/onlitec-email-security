@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '../api'
 
 export default function Tenants() {
+    const { t } = useTranslation()
     const [tenants, setTenants] = useState([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
@@ -36,7 +38,7 @@ export default function Tenants() {
             setForm({ name: '', slug: '', contact_email: '', max_domains: 10, max_users: 100, status: 'active' })
             fetchTenants()
         } catch (err) {
-            setError(err.response?.data?.error?.message || 'Failed to save')
+            setError(err.response?.data?.error?.message || t('common.saveFailed', 'Falha ao salvar'))
         }
     }
 
@@ -47,27 +49,27 @@ export default function Tenants() {
     }
 
     const handleDelete = async (id) => {
-        if (!confirm('Delete this tenant?')) return
+        if (!confirm(t('common.confirmDelete'))) return
         try {
             await api.delete(`/tenants/${id}`)
             fetchTenants()
         } catch (err) {
-            alert(err.response?.data?.error?.message || 'Failed to delete')
+            alert(err.response?.data?.error?.message || t('common.deleteFailed', 'Falha ao excluir'))
         }
     }
 
-    if (loading) return <div className="text-center py-12">Loading...</div>
+    if (loading) return <div className="text-center py-12">{t('common.loading')}</div>
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Tenants</h2>
-                    <p className="text-sm text-gray-600">Manage multi-tenant organizations</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('tenants.title')}</h2>
+                    <p className="text-sm text-gray-600">{t('tenants.subtitle')}</p>
                 </div>
                 <button onClick={() => { setEditTenant(null); setForm({ name: '', slug: '', contact_email: '', max_domains: 10, max_users: 100, status: 'active' }); setShowModal(true) }}
                     className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                    Add Tenant
+                    {t('tenants.addTenant')}
                 </button>
             </div>
 
@@ -75,12 +77,12 @@ export default function Tenants() {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slug</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Domains</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Users</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('tenants.name')}</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('tenants.slug')}</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('nav.domains')}</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('nav.users')}</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -90,19 +92,19 @@ export default function Tenants() {
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-500">{tenant.slug}</td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <span className={`px-2 py-1 text-xs rounded-full ${tenant.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                        {tenant.status}
+                                        {tenant.status === 'active' ? t('common.active') : t('common.inactive')}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-500">{tenant.domain_count || 0} / {tenant.max_domains}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-500">{tenant.user_count || 0} / {tenant.max_users}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                                    <button onClick={() => handleEdit(tenant)} className="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                                    <button onClick={() => handleDelete(tenant.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                                    <button onClick={() => handleEdit(tenant)} className="text-blue-600 hover:text-blue-900 mr-3">{t('common.edit')}</button>
+                                    <button onClick={() => handleDelete(tenant.id)} className="text-red-600 hover:text-red-900">{t('common.delete')}</button>
                                 </td>
                             </tr>
                         ))}
                         {tenants.length === 0 && (
-                            <tr><td colSpan="6" className="px-6 py-4 text-center text-gray-500">No tenants found</td></tr>
+                            <tr><td colSpan="6" className="px-6 py-4 text-center text-gray-500">{t('tenants.noTenants')}</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -111,48 +113,48 @@ export default function Tenants() {
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <h3 className="text-lg font-medium mb-4">{editTenant ? 'Edit Tenant' : 'Add Tenant'}</h3>
+                        <h3 className="text-lg font-medium mb-4">{editTenant ? t('tenants.editTenant') : t('tenants.addTenant')}</h3>
                         {error && <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4">{error}</div>}
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Name</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('tenants.name')}</label>
                                 <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Slug</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('tenants.slug')}</label>
                                 <input type="text" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required disabled={!!editTenant} />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Contact Email</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('tenants.contactEmail', 'Email de Contato')}</label>
                                 <input type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Max Domains</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t('tenants.maxDomains')}</label>
                                     <input type="number" value={form.max_domains} onChange={(e) => setForm({ ...form, max_domains: parseInt(e.target.value) })}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Max Users</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t('tenants.maxUsers')}</label>
                                     <input type="number" value={form.max_users} onChange={(e) => setForm({ ...form, max_users: parseInt(e.target.value) })}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Status</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('common.status')}</label>
                                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                    <option value="suspended">Suspended</option>
+                                    <option value="active">{t('common.active')}</option>
+                                    <option value="inactive">{t('common.inactive')}</option>
+                                    <option value="suspended">{t('tenants.suspended', 'Suspenso')}</option>
                                 </select>
                             </div>
                             <div className="flex justify-end space-x-3 pt-4">
-                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Save</button>
+                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">{t('common.cancel')}</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{t('common.save')}</button>
                             </div>
                         </form>
                     </div>

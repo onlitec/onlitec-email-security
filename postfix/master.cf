@@ -4,12 +4,17 @@
 #               (yes)   (yes)   (no)    (never) (100)
 # ==========================================================================
 
-# SMTP service (port 25)
+# SMTP service (port 25) - Receives mail from external servers
 smtp      inet  n       -       n       -       -       smtpd
   -o smtpd_tls_security_level=may
-  -o smtpd_sasl_auth_enable=yes
-  -o smtpd_client_restrictions=permit_sasl_authenticated,reject
-  -o smtpd_recipient_restrictions=permit_mynetworks,permit_sasl_authenticated,reject_unauth_destination
+  -o smtpd_sasl_auth_enable=no
+  -o smtpd_client_restrictions=
+  -o smtpd_helo_restrictions=reject_invalid_helo_hostname
+  -o smtpd_sender_restrictions=reject_non_fqdn_sender,reject_unknown_sender_domain
+  -o smtpd_relay_restrictions=permit_mynetworks,reject_unauth_destination
+  -o smtpd_recipient_restrictions=permit_mynetworks,reject_non_fqdn_recipient,reject_unknown_recipient_domain
+  -o smtpd_milters=inet:onlitec_rspamd:11332
+  -o milter_default_action=accept
 
 # Submission service (port 587)
 submission inet n       -       n       -       -       smtpd

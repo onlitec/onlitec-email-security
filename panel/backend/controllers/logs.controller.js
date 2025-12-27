@@ -39,7 +39,7 @@ exports.list = async (req, res) => {
 
         const countQuery = query.replace(/SELECT .+ FROM/, 'SELECT COUNT(*) as total FROM');
         const countResult = await pool.query(countQuery, params);
-        const total = parseInt(countResult.rows[0].total);
+        const total = countResult.rows && countResult.rows[0] ? parseInt(countResult.rows[0].total) : 0;
 
         query += ` ORDER BY l.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
         params.push(parseInt(limit), offset);
@@ -109,16 +109,74 @@ exports.stats = async (req, res) => {
             ORDER BY date ASC
         `);
 
+        // Convert PostgreSQL bigint (returned as string) to JavaScript numbers
+        const byStatusData = stats.rows.map(row => ({
+            status: row.status,
+            count: parseInt(row.count) || 0
+        }));
+
+        const timelineData = timeline.rows.map(row => ({
+            date: row.date,
+            total: parseInt(row.total) || 0,
+            delivered: parseInt(row.delivered) || 0,
+            rejected: parseInt(row.rejected) || 0,
+            quarantined: parseInt(row.quarantined) || 0
+        }));
+
         res.json({
             success: true,
             data: {
-                byStatus: stats.rows,
-                timeline: timeline.rows
+                byStatus: byStatusData,
+                timeline: timelineData
             }
         });
 
     } catch (error) {
         logger.error('Error getting log stats:', error);
         res.status(500).json({ success: false, error: { code: 'STATS_ERROR', message: 'Failed to get stats' } });
+    }
+};
+// Ingest logs from Rspamd
+exports.ingest = async (req, res) => {
+    try {
+        const logs = Array.isArray(req.body) ? req.body : [req.body];
+
+        for (const log of logs) {
+            // Map Rspamd JSON to DB columns
+            // Rspamd sends: { message_id, from, rcpt, subject, size, action, score, symbols, ip, ... }
+            /* 
+               Note: Rspamd field names might vary depending on configuration. 
+               We expect a custom formatted JSON or we adapt here.
+               For now, let's map what we usually get from metadata_exporter with template,
+               OR simplified mapping if we use the default JSON output.
+            */
+
+            const message_id = log.message_id || log['Message-ID'] || 'unknown';
+            const from_address = log.from || log.sender || '';
+            const to_address = log.rcpt || log.recipient || (Array.isArray(log.recipients) ? log.recipients[0] : '');
+            const subject = log.subject || '';
+            const size_bytes = log.size || 0;
+            const direction = 'inbound'; // Default for now
+            const status = log.action === 'reject' ? 'rejected' : 'accepted';
+            const spam_score = log.score || 0;
+            const is_spam = spam_score > 15 || log.action === 'reject';
+            const tenant_id = log.tenant_id || 'c3f5a2bf-d447-4729-95f9-61215bdf5275'; // Fallback to ONLITEC
+
+            await pool.query(`
+                INSERT INTO mail_logs (
+                    tenant_id, message_id, from_address, to_address, subject, 
+                    size_bytes, direction, status, spam_score, is_spam, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+            `, [
+                tenant_id, message_id, from_address, to_address, subject,
+                size_bytes, direction, status, spam_score, is_spam
+            ]);
+        }
+
+        res.json({ success: true, count: logs.length });
+
+    } catch (error) {
+        logger.error('Error ingesting logs:', error);
+        res.status(500).json({ success: false, error: { code: 'INGEST_ERROR', message: 'Failed to ingest logs' } });
     }
 };

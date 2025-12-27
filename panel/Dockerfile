@@ -31,10 +31,11 @@ RUN apk add --no-cache postgresql-client curl
 WORKDIR /app
 
 # Copy backend
+# Copy backend
 COPY --from=backend-build /app/backend ./backend
 
-# Frontend já foi construído para ../backend/public, então copiamos junto
-# Não precisa copiar separadamente pois já está em backend/public
+# Copy built frontend assets to backend/public
+COPY --from=frontend-build /app/frontend/dist ./backend/public
 
 WORKDIR /app/backend
 

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '../api'
 
 export default function Domains() {
+    const { t } = useTranslation()
     const [domains, setDomains] = useState([])
     const [tenants, setTenants] = useState([])
     const [loading, setLoading] = useState(true)
@@ -46,7 +48,7 @@ export default function Domains() {
             resetForm()
             fetchData()
         } catch (err) {
-            setError(err.response?.data?.error?.message || 'Failed to save')
+            setError(err.response?.data?.error?.message || t('common.saveFailed', 'Falha ao salvar'))
         }
     }
 
@@ -71,12 +73,12 @@ export default function Domains() {
     }
 
     const handleDelete = async (id) => {
-        if (!confirm('Delete this domain?')) return
+        if (!confirm(t('common.confirmDelete'))) return
         try {
             await api.delete(`/domains/${id}`)
             fetchData()
         } catch (err) {
-            alert(err.response?.data?.error?.message || 'Failed to delete')
+            alert(err.response?.data?.error?.message || t('common.deleteFailed', 'Falha ao excluir'))
         }
     }
 
@@ -90,7 +92,7 @@ export default function Domains() {
                 fetchData()
             }
         } catch (err) {
-            alert(err.response?.data?.error?.message || 'Failed to generate DKIM')
+            alert(err.response?.data?.error?.message || t('domains.dkimFailed', 'Falha ao gerar DKIM'))
         }
     }
 
@@ -99,11 +101,11 @@ export default function Domains() {
         try {
             const { data } = await api.post(`/domains/${domain.id}/verify-dns`)
             if (data.success) {
-                alert(`DNS Verification:\n\nMX: ${data.data.verification.mx ? '✓' : '✗'}\nSPF: ${data.data.verification.spf ? '✓' : '✗'}\nDKIM: ${data.data.verification.dkim ? '✓' : '✗'}`)
+                alert(`${t('domains.dnsVerification', 'Verificação DNS')}:\n\nMX: ${data.data.verification.mx ? '✓' : '✗'}\nSPF: ${data.data.verification.spf ? '✓' : '✗'}\nDKIM: ${data.data.verification.dkim ? '✓' : '✗'}`)
                 fetchData()
             }
         } catch (err) {
-            alert(err.response?.data?.error?.message || 'Failed to verify DNS')
+            alert(err.response?.data?.error?.message || t('domains.verifyFailed', 'Falha na verificação DNS'))
         } finally {
             setVerifying(null)
         }
@@ -115,17 +117,17 @@ export default function Domains() {
         </span>
     )
 
-    if (loading) return <div className="text-center py-12">Loading...</div>
+    if (loading) return <div className="text-center py-12">{t('common.loading')}</div>
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Domains</h2>
-                    <p className="text-sm text-gray-600">Manage email domains with relay and DKIM configuration</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('domains.title')}</h2>
+                    <p className="text-sm text-gray-600">{t('domains.subtitle')}</p>
                 </div>
                 <button onClick={() => { resetForm(); setShowModal(true) }} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                    Add Domain
+                    {t('domains.addDomain')}
                 </button>
             </div>
 
@@ -133,12 +135,12 @@ export default function Domains() {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Domain</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Relay</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">DKIM</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('domains.domain')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('domains.tenant')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('domains.relay')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('domains.dkim')}</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -148,35 +150,35 @@ export default function Domains() {
                                 <td className="px-4 py-4 whitespace-nowrap text-gray-500">{domain.tenant_name}</td>
                                 <td className="px-4 py-4 whitespace-nowrap">
                                     <span className={`px-2 py-1 text-xs rounded-full ${domain.status === 'active' ? 'bg-green-100 text-green-800' : domain.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
-                                        {domain.status}
+                                        {domain.status === 'active' ? t('common.active') : domain.status === 'pending' ? t('common.pending') : t('common.inactive')}
                                     </span>
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm">
                                     {domain.relay_host ? (
                                         <span className="text-green-600">{domain.relay_host}:{domain.relay_port}</span>
                                     ) : (
-                                        <span className="text-gray-400">Not configured</span>
+                                        <span className="text-gray-400">{t('domains.notConfigured')}</span>
                                     )}
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap">
                                     {domain.dkim_public_key ? (
-                                        <StatusBadge verified={true} label="Configured" />
+                                        <StatusBadge verified={true} label={t('domains.configured')} />
                                     ) : (
-                                        <StatusBadge verified={false} label="Not set" />
+                                        <StatusBadge verified={false} label={t('domains.notSet', 'Não definido')} />
                                     )}
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-right text-sm space-x-1">
-                                    <button onClick={() => handleEdit(domain)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                                    <button onClick={() => handleGenerateDkim(domain)} className="text-purple-600 hover:text-purple-900">DKIM</button>
+                                    <button onClick={() => handleEdit(domain)} className="text-blue-600 hover:text-blue-900">{t('common.edit')}</button>
+                                    <button onClick={() => handleGenerateDkim(domain)} className="text-purple-600 hover:text-purple-900">{t('domains.dkim')}</button>
                                     <button onClick={() => handleVerifyDns(domain)} disabled={verifying === domain.id} className="text-green-600 hover:text-green-900 disabled:opacity-50">
-                                        {verifying === domain.id ? '...' : 'Verify'}
+                                        {verifying === domain.id ? '...' : t('domains.verifyDns')}
                                     </button>
-                                    <button onClick={() => handleDelete(domain.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                                    <button onClick={() => handleDelete(domain.id)} className="text-red-600 hover:text-red-900">{t('common.delete')}</button>
                                 </td>
                             </tr>
                         ))}
                         {domains.length === 0 && (
-                            <tr><td colSpan="6" className="px-4 py-4 text-center text-gray-500">No domains found</td></tr>
+                            <tr><td colSpan="6" className="px-4 py-4 text-center text-gray-500">{t('domains.noDomains')}</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -186,72 +188,72 @@ export default function Domains() {
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                        <h3 className="text-lg font-medium mb-4">{selectedDomain ? 'Edit Domain' : 'Add Domain'}</h3>
+                        <h3 className="text-lg font-medium mb-4">{selectedDomain ? t('domains.editDomain') : t('domains.addDomain')}</h3>
                         {error && <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4">{error}</div>}
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Domain</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('domains.domain')}</label>
                                 <input type="text" value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })}
-                                    placeholder="example.com" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required disabled={!!selectedDomain} />
+                                    placeholder="exemplo.com" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required disabled={!!selectedDomain} />
                             </div>
                             {!selectedDomain && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Tenant</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t('domains.tenant')}</label>
                                     <select value={form.tenant_id} onChange={(e) => setForm({ ...form, tenant_id: e.target.value })}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
-                                        <option value="">Select tenant...</option>
-                                        {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                        <option value="">{t('users.selectTenant', 'Selecione o inquilino...')}</option>
+                                        {tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}
                                     </select>
                                 </div>
                             )}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Status</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('common.status')}</label>
                                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <option value="pending">Pending</option>
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
+                                    <option value="pending">{t('common.pending')}</option>
+                                    <option value="active">{t('common.active')}</option>
+                                    <option value="inactive">{t('common.inactive')}</option>
                                 </select>
                             </div>
 
                             <hr className="my-4" />
-                            <h4 className="font-medium text-gray-900">Relay Configuration (Email Destination)</h4>
-                            <p className="text-xs text-gray-500 mb-2">Configure where filtered emails should be delivered (e.g., Hostgator mail server)</p>
+                            <h4 className="font-medium text-gray-900">{t('domains.relayConfig')}</h4>
+                            <p className="text-xs text-gray-500 mb-2">{t('domains.relayConfigHelp')}</p>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700">Relay Host</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t('domains.relayHost')}</label>
                                     <input type="text" value={form.relay_host} onChange={(e) => setForm({ ...form, relay_host: e.target.value })}
-                                        placeholder="mail.example.com" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                        placeholder="mail.exemplo.com" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Relay Port</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t('domains.relayPort')}</label>
                                     <input type="number" value={form.relay_port} onChange={(e) => setForm({ ...form, relay_port: parseInt(e.target.value) })}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                                 </div>
                                 <div className="flex items-center pt-6">
                                     <input type="checkbox" checked={form.relay_use_tls} onChange={(e) => setForm({ ...form, relay_use_tls: e.target.checked })}
                                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                                    <label className="ml-2 text-sm text-gray-700">Use TLS</label>
+                                    <label className="ml-2 text-sm text-gray-700">{t('domains.useTls')}</label>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">SMTP Username (optional)</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t('domains.relayUsername')}</label>
                                     <input type="text" value={form.relay_username} onChange={(e) => setForm({ ...form, relay_username: e.target.value })}
-                                        placeholder="user@example.com" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                        placeholder="usuario@exemplo.com" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">SMTP Password (optional)</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t('domains.relayPassword')}</label>
                                     <input type="password" value={form.relay_password} onChange={(e) => setForm({ ...form, relay_password: e.target.value })}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                                 </div>
                             </div>
 
                             <div className="flex justify-end space-x-3 pt-4">
-                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Save</button>
+                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">{t('common.cancel')}</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{t('common.save')}</button>
                             </div>
                         </form>
                     </div>
@@ -262,28 +264,28 @@ export default function Domains() {
             {showDkimModal && dkimData && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
-                        <h3 className="text-lg font-medium mb-4">DKIM Keys Generated</h3>
+                        <h3 className="text-lg font-medium mb-4">{t('domains.dkimGenerated')}</h3>
                         <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
                             <p className="text-sm text-green-700">
-                                <strong>Add this DNS record to your domain:</strong>
+                                <strong>{t('domains.addDnsRecord')}</strong>
                             </p>
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Record Type</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('domains.recordType')}</label>
                                 <div className="mt-1 p-2 bg-gray-50 rounded font-mono text-sm">{dkimData.dnsRecord.type}</div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Record Name</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('domains.recordName')}</label>
                                 <div className="mt-1 p-2 bg-gray-50 rounded font-mono text-sm">{dkimData.dnsRecord.name}</div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Record Value</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('domains.recordValue')}</label>
                                 <textarea className="mt-1 w-full p-2 bg-gray-50 rounded font-mono text-xs h-24" readOnly value={dkimData.dnsRecord.value} />
                             </div>
                         </div>
                         <div className="flex justify-end pt-4">
-                            <button onClick={() => { setShowDkimModal(false); setDkimData(null) }} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Done</button>
+                            <button onClick={() => { setShowDkimModal(false); setDkimData(null) }} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{t('common.done', 'Concluído')}</button>
                         </div>
                     </div>
                 </div>

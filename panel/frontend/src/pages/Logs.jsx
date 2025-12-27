@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '../api'
 
 export default function Logs() {
+    const { t } = useTranslation()
     const [logs, setLogs] = useState([])
     const [stats, setStats] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -44,43 +46,51 @@ export default function Logs() {
         bounced: 'bg-red-100 text-red-800'
     }
 
-    if (loading) return <div className="text-center py-12">Loading...</div>
+    const statusLabels = {
+        delivered: t('logs.delivered', 'Entregue'),
+        rejected: t('logs.rejected', 'Rejeitado'),
+        quarantined: t('logs.quarantined', 'Quarentena'),
+        deferred: t('logs.deferred', 'Adiado'),
+        bounced: t('logs.bounced', 'Devolvido')
+    }
+
+    if (loading) return <div className="text-center py-12">{t('common.loading')}</div>
 
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-bold text-gray-900">Mail Logs</h2>
-                <p className="text-sm text-gray-600">View email delivery and filtering logs</p>
+                <h2 className="text-2xl font-bold text-gray-900">{t('logs.title')}</h2>
+                <p className="text-sm text-gray-600">{t('logs.subtitle')}</p>
             </div>
 
             {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {stats.byStatus?.map(s => (
                         <div key={s.status} className="bg-white rounded-lg shadow p-4">
-                            <div className="text-2xl font-bold text-gray-900">{s.count}</div>
-                            <div className="text-sm text-gray-500 capitalize">{s.status}</div>
+                            <div className="text-2xl font-bold text-gray-900">{parseInt(s.count) || 0}</div>
+                            <div className="text-sm text-gray-500 capitalize">{statusLabels[s.status] || s.status}</div>
                         </div>
                     ))}
                 </div>
             )}
 
             <div className="bg-white rounded-lg shadow p-4 flex flex-wrap gap-4">
-                <input type="text" placeholder="Search..." value={filter.search}
+                <input type="text" placeholder={t('common.search')} value={filter.search}
                     onChange={(e) => setFilter({ ...filter, search: e.target.value })}
                     className="flex-1 min-w-[200px] rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
-                <input type="text" placeholder="Sender..." value={filter.sender}
+                <input type="text" placeholder={t('logs.sender')} value={filter.sender}
                     onChange={(e) => setFilter({ ...filter, sender: e.target.value })}
                     className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
-                <input type="text" placeholder="Recipient..." value={filter.recipient}
+                <input type="text" placeholder={t('logs.recipient')} value={filter.recipient}
                     onChange={(e) => setFilter({ ...filter, recipient: e.target.value })}
                     className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                 <select value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}
                     className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    <option value="">All Status</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="quarantined">Quarantined</option>
-                    <option value="deferred">Deferred</option>
+                    <option value="">{t('logs.allStatus', 'Todos os Status')}</option>
+                    <option value="delivered">{t('logs.delivered', 'Entregue')}</option>
+                    <option value="rejected">{t('logs.rejected', 'Rejeitado')}</option>
+                    <option value="quarantined">{t('logs.quarantined', 'Quarentena')}</option>
+                    <option value="deferred">{t('logs.deferred', 'Adiado')}</option>
                 </select>
             </div>
 
@@ -88,12 +98,12 @@ export default function Logs() {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">From</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">To</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.from')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.to')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.subject')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('quarantine.score')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.date')}</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -104,15 +114,15 @@ export default function Logs() {
                                 <td className="px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">{log.subject || '-'}</td>
                                 <td className="px-4 py-3">
                                     <span className={`px-2 py-1 text-xs rounded-full ${statusColors[log.status] || 'bg-gray-100 text-gray-800'}`}>
-                                        {log.status}
+                                        {statusLabels[log.status] || log.status}
                                     </span>
                                 </td>
-                                <td className="px-4 py-3 text-sm text-gray-500">{log.spam_score?.toFixed(1) || '-'}</td>
+                                <td className="px-4 py-3 text-sm text-gray-500">{log.spam_score !== null ? Number(log.spam_score).toFixed(1) : '-'}</td>
                                 <td className="px-4 py-3 text-sm text-gray-500">{formatDate(log.created_at)}</td>
                             </tr>
                         ))}
                         {logs.length === 0 && (
-                            <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-500">No logs found</td></tr>
+                            <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-500">{t('logs.noLogs')}</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -121,10 +131,10 @@ export default function Logs() {
             {pagination.pages > 1 && (
                 <div className="flex justify-center gap-2">
                     <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                        className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">Previous</button>
-                    <span className="px-4 py-2">Page {page} of {pagination.pages}</span>
+                        className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">{t('common.previous')}</button>
+                    <span className="px-4 py-2">{t('common.page')} {page} {t('common.of')} {pagination.pages}</span>
                     <button disabled={page >= pagination.pages} onClick={() => setPage(p => p + 1)}
-                        className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">Next</button>
+                        className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">{t('common.next')}</button>
                 </div>
             )}
         </div>

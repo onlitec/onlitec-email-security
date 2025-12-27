@@ -1,0 +1,12 @@
+rules {
+  POSTGRES_LOG {
+    backend = "postgres";
+    url = "host=onlitec_emailprotect_db port=5432 dbname=emailprotect user=emailprotect password=changeme123";
+    statement = "INSERT INTO mail_logs (tenant_id, domain_id, message_id, from_address, to_address, subject, size_bytes, direction, status, smtp_code, dsn_message, spam_score, is_spam, is_virus, virus_name, processing_time_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)";
+    # Columns mapping:
+    # 1: tenant_id (uuid) - Need custom lua to clear/set this? Or use default? 
+    # The standard metadata_exporter doesn't know how to map specific columns easily without a custom formatting lua script or strict select.
+    # Actually, Rspamd postgres plugin is complex.
+    # Let's try to use the simplified generic push or checking if "tenant_rules.lua" handles it.
+  }
+}

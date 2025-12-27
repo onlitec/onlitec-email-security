@@ -25,6 +25,7 @@ const blacklistRoutes = require('./routes/blacklist');
 const profileRoutes = require('./routes/profile');
 const aliasesRoutes = require('./routes/aliases');
 const auditRoutes = require('./routes/audit');
+const servicesRoutes = require('./routes/services');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -145,6 +146,7 @@ app.use('/api/blacklist', blacklistRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/aliases', aliasesRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/services', servicesRoutes);
 
 // Metrics endpoint
 app.get('/metrics', async (req, res) => {

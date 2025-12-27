@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '../api'
 
 export default function Login({ setAuth }) {
-    const [email, setEmail] = useState('admin@onlitec.local')
+    const { t } = useTranslation()
+    const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
@@ -23,10 +25,10 @@ export default function Login({ setAuth }) {
                 localStorage.setItem('user', JSON.stringify(data.data.user))
                 setAuth(true)
             } else {
-                setError(data.error?.message || 'Login failed')
+                setError(data.error?.message || t('login.failed', 'Falha no login'))
             }
         } catch (err) {
-            setError(err.response?.data?.error?.message || err.response?.data?.message || 'Login failed')
+            setError(err.response?.data?.error?.message || err.response?.data?.message || t('login.failed', 'Falha no login'))
         } finally {
             setLoading(false)
         }
@@ -40,7 +42,7 @@ export default function Login({ setAuth }) {
                         Onlitec Email Protection
                     </h2>
                     <p className="mt-2 text-center text-sm text-gray-600">
-                        Admin Panel - Multi-Tenant
+                        {t('login.subtitle', 'Painel de Administração - Multi-Tenant')}
                     </p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -59,14 +61,14 @@ export default function Login({ setAuth }) {
                                 type="email"
                                 required
                                 className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                                placeholder="admin@onlitec.local"
+                                placeholder="admin@suaempresa.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                             />
                         </div>
                         <div>
                             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                                Password
+                                {t('users.password', 'Senha')}
                             </label>
                             <input
                                 id="password"
@@ -86,13 +88,10 @@ export default function Login({ setAuth }) {
                             disabled={loading}
                             className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                         >
-                            {loading ? 'Signing in...' : 'Sign in'}
+                            {loading ? t('login.signingIn', 'Entrando...') : t('login.signIn', 'Entrar')}
                         </button>
                     </div>
                 </form>
-                <div className="text-center text-xs text-gray-500 mt-4">
-                    <p>Default: admin@onlitec.local / changeme123!</p>
-                </div>
             </div>
         </div>
     )

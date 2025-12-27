@@ -38,6 +38,7 @@
         "audit": "Audit",
         "settings": "Settings",
         "help": "Help",
+        "services": "Services",
         "profile": "Profile",
         "logout": "Logout"
     },
@@ -246,5 +247,35 @@
         "select": "Language",
         "pt": "Português (Brasil)",
         "en": "English"
+    },
+    "services": {
+        "title": "Services Status",
+        "subtitle": "Real-time monitoring of system services",
+        "online": "Online",
+        "offline": "Offline",
+        "degraded": "Degraded",
+        "unknown": "Unknown",
+        "clamav": "Antivirus",
+        "rspamd": "Antispam",
+        "postfix": "SMTP Server",
+        "redis": "Cache",
+        "postgresql": "Database",
+        "port": "Port",
+        "ports": "Ports",
+        "refresh": "Refresh",
+        "autoRefresh": "Auto-refresh",
+        "lastUpdate": "Last update",
+        "allServicesOnline": "All services are online",
+        "someServicesOffline": "Some services have issues",
+        "criticalIssues": "Critical issues detected",
+        "metrics": "Metrics",
+        "databaseSize": "Database Size",
+        "activeConnections": "Active Connections",
+        "mailStats": "Email Statistics (24h)",
+        "totalProcessed": "Total Processed",
+        "delivered": "Delivered",
+        "rejected": "Rejected",
+        "spam": "Spam",
+        "infoMessage": "Services are checked every 30 seconds when auto-refresh is enabled."
     }
 }

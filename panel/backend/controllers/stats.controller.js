@@ -14,27 +14,29 @@ exports.getStats = async (req, res) => {
     try {
         const stats = {};
 
-        // Total emails today
+        // Total emails today (from mail_logs)
         const emailsToday = await pool.query(`
-            SELECT COALESCE(SUM(total_received), 0) as total
-            FROM daily_stats 
-            WHERE date = CURRENT_DATE
+            SELECT COUNT(*) as total
+            FROM mail_logs 
+            WHERE created_at >= CURRENT_DATE
         `);
         stats.emailsToday = parseInt(emailsToday.rows[0]?.total || 0);
 
-        // Spam blocked today (using total_spam column)
+        // Spam blocked today (from mail_logs where is_spam = true or status = rejected)
         const spamBlocked = await pool.query(`
-            SELECT COALESCE(SUM(total_spam), 0) as total
-            FROM daily_stats 
-            WHERE date = CURRENT_DATE
+            SELECT COUNT(*) as total
+            FROM mail_logs 
+            WHERE created_at >= CURRENT_DATE
+            AND (is_spam = true OR status = 'rejected' OR spam_score > 15)
         `);
         stats.spamBlocked = parseInt(spamBlocked.rows[0]?.total || 0);
 
-        // Virus detected this week (using total_virus column)
+        // Virus detected this week (from mail_logs)
         const virusDetected = await pool.query(`
-            SELECT COALESCE(SUM(total_virus), 0) as total
-            FROM daily_stats 
-            WHERE date >= CURRENT_DATE - INTERVAL '7 days'
+            SELECT COUNT(*) as total
+            FROM mail_logs 
+            WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+            AND status = 'virus'
         `);
         stats.virusDetected = parseInt(virusDetected.rows[0]?.total || 0);
 
@@ -79,19 +81,28 @@ exports.getStats = async (req, res) => {
         `);
         stats.recentActivity = recentActivity.rows;
 
-        // Stats trend (last 7 days) - using actual column names
+        // Stats trend (last 7 days) - aggregate from mail_logs
         const trend = await pool.query(`
             SELECT 
-                date,
-                COALESCE(total_received, 0) as received,
-                COALESCE(total_sent, 0) as delivered,
-                COALESCE(total_spam, 0) as spam,
-                COALESCE(total_virus, 0) as virus
-            FROM daily_stats 
-            WHERE date >= CURRENT_DATE - INTERVAL '7 days'
+                DATE(created_at) as date,
+                COUNT(*) as received,
+                SUM(CASE WHEN status IN ('delivered', 'accepted') THEN 1 ELSE 0 END) as delivered,
+                SUM(CASE WHEN is_spam = true OR status = 'rejected' OR spam_score > 15 THEN 1 ELSE 0 END) as spam,
+                SUM(CASE WHEN status = 'virus' THEN 1 ELSE 0 END) as virus
+            FROM mail_logs 
+            WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+            GROUP BY DATE(created_at)
             ORDER BY date ASC
         `);
-        stats.trend = trend.rows;
+
+        // Convert bigint strings to numbers for frontend compatibility
+        stats.trend = trend.rows.map(row => ({
+            date: row.date,
+            received: parseInt(row.received) || 0,
+            delivered: parseInt(row.delivered) || 0,
+            spam: parseInt(row.spam) || 0,
+            virus: parseInt(row.virus) || 0
+        }));
 
         res.json({
             success: true,

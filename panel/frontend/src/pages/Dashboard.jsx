@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import api from '../api'
@@ -8,9 +9,10 @@ const COLORS = ['#3B82F6', '#EF4444', '#F59E0B', '#10B981']
 export default function Dashboard() {
     const { t } = useTranslation()
     const [stats, setStats] = useState(null)
+    const [servicesStatus, setServicesStatus] = useState(null)
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => { fetchStats() }, [])
+    useEffect(() => { fetchStats(); fetchServicesStatus() }, [])
 
     const fetchStats = async () => {
         try {
@@ -22,6 +24,17 @@ export default function Dashboard() {
             console.error('Failed to fetch stats:', error)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const fetchServicesStatus = async () => {
+        try {
+            const response = await api.get('/services/status')
+            if (response.data.success) {
+                setServicesStatus(response.data.data)
+            }
+        } catch (error) {
+            console.error('Failed to fetch services status:', error)
         }
     }
 
@@ -166,6 +179,46 @@ export default function Dashboard() {
                 )}
             </div>
 
+            {/* Services Status Card */}
+            {servicesStatus && (
+                <div className="bg-white shadow rounded-lg p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-medium text-gray-900">{t('services.title', 'Status dos Serviços')}</h3>
+                        <Link
+                            to="/services"
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                            {t('common.viewDetails', 'Ver detalhes')} →
+                        </Link>
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                        {servicesStatus.services?.map((service) => (
+                            <div
+                                key={service.name}
+                                className={`flex items-center space-x-2 px-3 py-2 rounded-full ${service.status === 'online'
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-red-100 text-red-800'
+                                    }`}
+                            >
+                                <span>{service.status === 'online' ? '✓' : '✗'}</span>
+                                <span className="text-sm font-medium">{service.name}</span>
+                            </div>
+                        ))}
+                    </div>
+                    {servicesStatus.overall && (
+                        <p className={`mt-3 text-sm ${servicesStatus.overall === 'healthy'
+                                ? 'text-green-600'
+                                : 'text-yellow-600'
+                            }`}>
+                            {servicesStatus.overall === 'healthy'
+                                ? t('services.allServicesOnline', 'Todos os serviços estão online')
+                                : t('services.someServicesOffline', 'Alguns serviços apresentam problemas')
+                            }
+                        </p>
+                    )}
+                </div>
+            )}
+
             <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
                 <p className="text-sm text-blue-700">
                     <strong>{t('dashboard.multiTenantActive')}</strong> {t('dashboard.allFeaturesOperational')}
@@ -189,7 +242,7 @@ function StatsCard({ title, value, subtitle, color }) {
                     <div className="ml-5 w-0 flex-1">
                         <dl>
                             <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
-                            <dd className="text-2xl font-semibold text-gray-900">{value.toLocaleString()}</dd>
+                            <dd className="text-2xl font-semibold text-gray-900">{(Number(value) || 0).toLocaleString()}</dd>
                         </dl>
                     </div>
                 </div>

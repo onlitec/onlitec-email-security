@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '../api'
 
 export default function Settings() {
+    const { t } = useTranslation()
     const [blacklist, setBlacklist] = useState([])
     const [whitelist, setWhitelist] = useState([])
     const [loading, setLoading] = useState(true)
@@ -33,17 +35,17 @@ export default function Settings() {
             setForm({ type: 'email', value: '', reason: '' })
             fetchLists()
         } catch (err) {
-            alert(err.response?.data?.error?.message || 'Failed to add')
+            alert(err.response?.data?.error?.message || t('settings.addFailed', 'Falha ao adicionar'))
         }
     }
 
     const handleDelete = async (list, id) => {
-        if (!confirm('Remove this entry?')) return
+        if (!confirm(t('settings.confirmRemove', 'Remover esta entrada?'))) return
         try {
             await api.delete(`/${list}/${id}`)
             fetchLists()
         } catch (err) {
-            alert(err.response?.data?.error?.message || 'Failed to delete')
+            alert(err.response?.data?.error?.message || t('common.deleteFailed', 'Falha ao excluir'))
         }
     }
 
@@ -52,17 +54,17 @@ export default function Settings() {
             <div className="px-6 py-4 border-b flex justify-between items-center">
                 <h3 className={`text-lg font-medium ${color}`}>{title}</h3>
                 <button onClick={() => setShowModal(list)} className={`px-3 py-1 text-sm rounded-md ${list === 'blacklist' ? 'bg-red-600' : 'bg-green-600'} text-white hover:opacity-90`}>
-                    Add Entry
+                    {t('settings.addEntry')}
                 </button>
             </div>
             <div className="overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('settings.type')}</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('settings.value')}</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('settings.reason', 'Motivo')}</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -74,12 +76,12 @@ export default function Settings() {
                                 <td className="px-6 py-4 whitespace-nowrap font-mono text-sm text-gray-900">{item.value}</td>
                                 <td className="px-6 py-4 text-sm text-gray-500">{item.reason || '-'}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right">
-                                    <button onClick={() => handleDelete(list, item.id)} className="text-red-600 hover:text-red-900 text-sm">Remove</button>
+                                    <button onClick={() => handleDelete(list, item.id)} className="text-red-600 hover:text-red-900 text-sm">{t('settings.remove', 'Remover')}</button>
                                 </td>
                             </tr>
                         ))}
                         {data.length === 0 && (
-                            <tr><td colSpan="4" className="px-6 py-4 text-center text-gray-500">No entries</td></tr>
+                            <tr><td colSpan="4" className="px-6 py-4 text-center text-gray-500">{t('settings.noEntries')}</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -87,48 +89,48 @@ export default function Settings() {
         </div>
     )
 
-    if (loading) return <div className="text-center py-12">Loading...</div>
+    if (loading) return <div className="text-center py-12">{t('common.loading')}</div>
 
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
-                <p className="text-sm text-gray-600">Manage blacklist and whitelist entries</p>
+                <h2 className="text-2xl font-bold text-gray-900">{t('settings.title')}</h2>
+                <p className="text-sm text-gray-600">{t('settings.subtitle')}</p>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-                <ListTable title="Blacklist" data={blacklist} list="blacklist" color="text-red-600" />
-                <ListTable title="Whitelist" data={whitelist} list="whitelist" color="text-green-600" />
+                <ListTable title={t('settings.blacklist')} data={blacklist} list="blacklist" color="text-red-600" />
+                <ListTable title={t('settings.whitelist')} data={whitelist} list="whitelist" color="text-green-600" />
             </div>
 
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <h3 className="text-lg font-medium mb-4">Add to {showModal}</h3>
+                        <h3 className="text-lg font-medium mb-4">{t('settings.addTo', 'Adicionar à')} {showModal === 'blacklist' ? t('settings.blacklist') : t('settings.whitelist')}</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Type</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('settings.type')}</label>
                                 <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                     <option value="email">Email</option>
-                                    <option value="domain">Domain</option>
-                                    <option value="ip">IP Address</option>
+                                    <option value="domain">{t('domains.domain')}</option>
+                                    <option value="ip">{t('settings.ipAddress', 'Endereço IP')}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Value</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('settings.value')}</label>
                                 <input type="text" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })}
-                                    placeholder="spam@example.com or @example.com or 192.168.1.1"
+                                    placeholder="spam@exemplo.com ou @exemplo.com ou 192.168.1.1"
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Reason (optional)</label>
+                                <label className="block text-sm font-medium text-gray-700">{t('settings.reasonOptional', 'Motivo (opcional)')}</label>
                                 <input type="text" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                             </div>
                             <div className="flex justify-end space-x-3 pt-4">
-                                <button type="button" onClick={() => setShowModal(null)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">Cancel</button>
-                                <button type="submit" className={`px-4 py-2 text-white rounded-md ${showModal === 'blacklist' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>Add</button>
+                                <button type="button" onClick={() => setShowModal(null)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">{t('common.cancel')}</button>
+                                <button type="submit" className={`px-4 py-2 text-white rounded-md ${showModal === 'blacklist' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>{t('common.add')}</button>
                             </div>
                         </form>
                     </div>

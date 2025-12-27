@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '../api'
 
 export default function Policies() {
+    const { t } = useTranslation()
     const [policies, setPolicies] = useState([])
     const [tenants, setTenants] = useState([])
     const [loading, setLoading] = useState(true)
@@ -36,7 +38,7 @@ export default function Policies() {
             setShowModal(false)
             resetForm()
             fetchData()
-        } catch (err) { setError(err.response?.data?.error?.message || 'Failed to save') }
+        } catch (err) { setError(err.response?.data?.error?.message || t('common.saveFailed', 'Falha ao salvar')) }
     }
 
     const resetForm = () => {
@@ -51,33 +53,44 @@ export default function Policies() {
     }
 
     const handleDelete = async (id) => {
-        if (!confirm('Delete this policy?')) return
+        if (!confirm(t('common.confirmDelete'))) return
         try { await api.delete(`/policies/${id}`); fetchData() }
-        catch (err) { alert(err.response?.data?.error?.message || 'Failed to delete') }
+        catch (err) { alert(err.response?.data?.error?.message || t('common.deleteFailed', 'Falha ao excluir')) }
     }
 
-    if (loading) return <div className="text-center py-12">Loading...</div>
+    const featureLabels = {
+        enable_greylisting: t('policies.greylisting'),
+        enable_bayes: t('policies.bayes'),
+        enable_dkim_check: t('policies.dkimCheck'),
+        enable_spf_check: t('policies.spfCheck'),
+        enable_dmarc_check: t('policies.dmarcCheck'),
+        quarantine_spam: t('policies.quarantineSpam'),
+        quarantine_virus: t('policies.quarantineVirus'),
+        is_default: t('policies.isDefault')
+    }
+
+    if (loading) return <div className="text-center py-12">{t('common.loading')}</div>
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Spam Policies</h2>
-                    <p className="text-sm text-gray-600">Configure spam filtering thresholds per tenant</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('policies.title')}</h2>
+                    <p className="text-sm text-gray-600">{t('policies.subtitle')}</p>
                 </div>
-                <button onClick={() => { resetForm(); setShowModal(true) }} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Add Policy</button>
+                <button onClick={() => { resetForm(); setShowModal(true) }} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">{t('policies.addPolicy')}</button>
             </div>
 
             <div className="bg-white shadow rounded-lg overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reject Score</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quarantine</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Default</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('policies.name')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('domains.tenant')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('policies.rejectScore')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('policies.quarantine')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('policies.default')}</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -88,19 +101,19 @@ export default function Policies() {
                                 <td className="px-4 py-4 text-gray-500">{policy.reject_score}</td>
                                 <td className="px-4 py-4">
                                     <span className={`px-2 py-1 text-xs rounded ${policy.quarantine_spam ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                                        Spam: {policy.quarantine_spam ? 'Yes' : 'No'}
+                                        Spam: {policy.quarantine_spam ? t('common.yes') : t('common.no')}
                                     </span>
                                 </td>
                                 <td className="px-4 py-4">
-                                    {policy.is_default && <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Default</span>}
+                                    {policy.is_default && <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">{t('policies.default')}</span>}
                                 </td>
                                 <td className="px-4 py-4 text-right space-x-2">
-                                    <button onClick={() => handleEdit(policy)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                                    <button onClick={() => handleDelete(policy.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                                    <button onClick={() => handleEdit(policy)} className="text-blue-600 hover:text-blue-900">{t('common.edit')}</button>
+                                    <button onClick={() => handleDelete(policy.id)} className="text-red-600 hover:text-red-900">{t('common.delete')}</button>
                                 </td>
                             </tr>
                         ))}
-                        {policies.length === 0 && <tr><td colSpan="6" className="px-4 py-4 text-center text-gray-500">No policies found</td></tr>}
+                        {policies.length === 0 && <tr><td colSpan="6" className="px-4 py-4 text-center text-gray-500">{t('policies.noPolicies')}</td></tr>}
                     </tbody>
                 </table>
             </div>
@@ -108,43 +121,43 @@ export default function Policies() {
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <h3 className="text-lg font-medium mb-4">{editPolicy ? 'Edit Policy' : 'Add Policy'}</h3>
+                        <h3 className="text-lg font-medium mb-4">{editPolicy ? t('policies.editPolicy') : t('policies.addPolicy')}</h3>
                         {error && <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4">{error}</div>}
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 {!editPolicy && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Tenant</label>
+                                        <label className="block text-sm font-medium text-gray-700">{t('domains.tenant')}</label>
                                         <select value={form.tenant_id} onChange={(e) => setForm({ ...form, tenant_id: e.target.value })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
-                                            <option value="">Select tenant...</option>
-                                            {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                            <option value="">{t('users.selectTenant', 'Selecione o inquilino...')}</option>
+                                            {tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}
                                         </select>
                                     </div>
                                 )}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Policy Name</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t('policies.name')}</label>
                                     <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required />
                                 </div>
                             </div>
-                            <h4 className="font-medium text-gray-900 pt-4">Spam Score Thresholds</h4>
+                            <h4 className="font-medium text-gray-900 pt-4">{t('policies.scoreThresholds')}</h4>
                             <div className="grid grid-cols-4 gap-4">
-                                <div><label className="block text-xs text-gray-500">Greylist</label><input type="number" step="0.1" value={form.greylisting_score} onChange={(e) => setForm({ ...form, greylisting_score: parseFloat(e.target.value) })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" /></div>
-                                <div><label className="block text-xs text-gray-500">Add Header</label><input type="number" step="0.1" value={form.add_header_score} onChange={(e) => setForm({ ...form, add_header_score: parseFloat(e.target.value) })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" /></div>
-                                <div><label className="block text-xs text-gray-500">Rewrite Subject</label><input type="number" step="0.1" value={form.rewrite_subject_score} onChange={(e) => setForm({ ...form, rewrite_subject_score: parseFloat(e.target.value) })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" /></div>
-                                <div><label className="block text-xs text-gray-500">Reject</label><input type="number" step="0.1" value={form.reject_score} onChange={(e) => setForm({ ...form, reject_score: parseFloat(e.target.value) })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" /></div>
+                                <div><label className="block text-xs text-gray-500">{t('policies.greylistScore')}</label><input type="number" step="0.1" value={form.greylisting_score} onChange={(e) => setForm({ ...form, greylisting_score: parseFloat(e.target.value) })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" /></div>
+                                <div><label className="block text-xs text-gray-500">{t('policies.addHeaderScore')}</label><input type="number" step="0.1" value={form.add_header_score} onChange={(e) => setForm({ ...form, add_header_score: parseFloat(e.target.value) })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" /></div>
+                                <div><label className="block text-xs text-gray-500">{t('policies.rewriteSubjectScore')}</label><input type="number" step="0.1" value={form.rewrite_subject_score} onChange={(e) => setForm({ ...form, rewrite_subject_score: parseFloat(e.target.value) })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" /></div>
+                                <div><label className="block text-xs text-gray-500">{t('policies.rejectScore')}</label><input type="number" step="0.1" value={form.reject_score} onChange={(e) => setForm({ ...form, reject_score: parseFloat(e.target.value) })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" /></div>
                             </div>
-                            <h4 className="font-medium text-gray-900 pt-4">Features</h4>
+                            <h4 className="font-medium text-gray-900 pt-4">{t('policies.features')}</h4>
                             <div className="grid grid-cols-3 gap-4">
-                                {['enable_greylisting', 'enable_bayes', 'enable_dkim_check', 'enable_spf_check', 'enable_dmarc_check', 'quarantine_spam', 'quarantine_virus', 'is_default'].map(field => (
+                                {Object.keys(featureLabels).map(field => (
                                     <label key={field} className="flex items-center">
                                         <input type="checkbox" checked={form[field]} onChange={(e) => setForm({ ...form, [field]: e.target.checked })} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                                        <span className="ml-2 text-sm text-gray-700">{field.replace(/_/g, ' ').replace('enable ', '')}</span>
+                                        <span className="ml-2 text-sm text-gray-700">{featureLabels[field]}</span>
                                     </label>
                                 ))}
                             </div>
                             <div className="flex justify-end space-x-3 pt-4">
-                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Save</button>
+                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">{t('common.cancel')}</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{t('common.save')}</button>
                             </div>
                         </form>
                     </div>

@@ -40,6 +40,7 @@
         "help": "Ajuda",
         "services": "Serviços",
         "profile": "Perfil",
+        "manager": "Gerenciamento",
         "logout": "Sair"
     },
     "dashboard": {
@@ -190,8 +191,8 @@
         "noLogs": "Nenhum log de auditoria"
     },
     "settings": {
-        "title": "Configurações",
-        "subtitle": "Gerenciar blacklist e whitelist",
+        "title": "Listas de Acesso",
+        "subtitle": "Gerenciar Blacklist e Whitelist de domínios, emails e IPs",
         "blacklist": "Lista Negra",
         "whitelist": "Lista Branca",
         "addEntry": "Adicionar entrada...",
@@ -277,5 +278,45 @@
         "rejected": "Rejeitados",
         "spam": "Spam",
         "infoMessage": "Os serviços são verificados a cada 30 segundos quando a atualização automática está ativada."
+    },
+    "manager": {
+        "title": "Gerenciamento do Sistema",
+        "subtitle": "Configurações globais da plataforma",
+        "general": "Geral",
+        "notifications": "Notificações",
+        "security": "Segurança",
+        "branding": "Identidade Visual",
+        "logoUrl": "URL do Logotipo",
+        "faviconUrl": "URL do Favicon",
+        "smtpConfig": "Configuração SMTP",
+        "smtpHost": "Servidor SMTP",
+        "smtpPort": "Porta SMTP",
+        "smtpUser": "Usuário SMTP",
+        "smtpPass": "Senha SMTP",
+        "smtpSecure": "Conexão Segura (SSL/TLS)",
+        "smtpFrom": "Email do Remetente",
+        "testSmtp": "Testar Envio",
+        "passwordPolicy": "Política de Senhas",
+        "testEmail": "Email de Teste"
+    },
+    "roles": {
+        "title": "Perfis e Permissões",
+        "addRole": "Adicionar Perfil",
+        "roleName": "Nome do Perfil",
+        "permissions": "Permissões",
+        "view": "Visualizar",
+        "manage": "Gerenciar",
+        "deleteRole": "Excluir Perfil",
+        "confirmDelete": "Tem certeza que deseja excluir este perfil?"
+    },
+    "auth": {
+        "forgotPassword": "Esqueci minha senha",
+        "resetPassword": "Redefinir Senha",
+        "sendResetLink": "Enviar Link de Recuperação",
+        "backToLogin": "Voltar ao Login",
+        "emailSent": "Se o email existir, um link foi enviado.",
+        "newPassword": "Nova Senha",
+        "confirmPassword": "Confirmar Senha",
+        "resetSuccess": "Senha redefinida com sucesso!"
     }
 }

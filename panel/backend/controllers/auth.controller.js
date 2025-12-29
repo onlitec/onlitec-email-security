@@ -337,3 +337,107 @@ exports.changePassword = async (req, res, next) => {
         next(error);
     }
 };
+
+// Forgot Password
+exports.forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        const crypto = require('crypto');
+        const nodemailer = require('nodemailer');
+
+        if (!email) {
+            return res.status(400).json({ success: false, error: { message: 'Email is required' } });
+        }
+
+        // Check user exists
+        const userRes = await pool.query('SELECT id, email FROM admin_users WHERE email = $1 AND deleted_at IS NULL', [email]);
+        if (userRes.rows.length === 0) {
+            // Return success even if not found to prevent enumeration
+            return res.json({ success: true, message: 'If credentials are valid, an email has been sent.' });
+        }
+
+        const user = userRes.rows[0];
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+        // Save token
+        await pool.query(
+            'INSERT INTO password_resets (email, token, expires_at) VALUES ($1, $2, $3)',
+            [email, token, expiresAt]
+        );
+
+        // Get SMTP settings
+        const settingsRes = await pool.query("SELECT key, value FROM system_settings WHERE key LIKE 'smtp_%'");
+        const settings = {};
+        settingsRes.rows.forEach(r => settings[r.key] = r.value);
+
+        // Send Email if SMTP is configured
+        if (settings.smtp_host) {
+            const transporter = nodemailer.createTransport({
+                host: settings.smtp_host,
+                port: parseInt(settings.smtp_port || '587'),
+                secure: settings.smtp_secure === 'true',
+                auth: settings.smtp_user ? { user: settings.smtp_user, pass: settings.smtp_pass } : undefined,
+                tls: { rejectUnauthorized: false }
+            });
+
+            // Assuming frontend URL structure
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'; // Default dev
+            const resetLink = `${frontendUrl}/reset-password?token=${token}`;
+
+            await transporter.sendMail({
+                from: settings.smtp_from || 'noreply@example.com',
+                to: email,
+                subject: 'Reset your password - Onlitec Email Protection',
+                html: `<p>You requested a password reset. Click the link below to verify:</p><p><a href="${resetLink}">${resetLink}</a></p><p>Link expires in 30 minutes.</p>`
+            });
+        }
+
+        res.json({ success: true, message: 'If credentials are valid, an email has been sent.' });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Reset Password
+exports.resetPassword = async (req, res, next) => {
+    try {
+        const { token, newPassword } = req.body;
+
+        if (!token || !newPassword) {
+            return res.status(400).json({ success: false, error: { message: 'Token and new password are required' } });
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({ success: false, error: { message: 'Password too short' } });
+        }
+
+        // Verify token
+        const tokenRes = await pool.query(
+            'SELECT * FROM password_resets WHERE token = $1 AND expires_at > NOW()',
+            [token]
+        );
+
+        if (tokenRes.rows.length === 0) {
+            return res.status(400).json({ success: false, error: { message: 'Invalid or expired token' } });
+        }
+
+        const resetEntry = tokenRes.rows[0];
+
+        // Update user password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await pool.query(
+            'UPDATE admin_users SET password_hash = $1, updated_at = NOW() WHERE email = $2',
+            [hashedPassword, resetEntry.email]
+        );
+
+        // Delete used token
+        await pool.query('DELETE FROM password_resets WHERE id = $1', [resetEntry.id]);
+
+        res.json({ success: true, message: 'Password has been reset successfully.' });
+
+    } catch (error) {
+        next(error);
+    }
+};

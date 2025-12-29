@@ -1,10 +1,12 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useSettings } from '../contexts/SettingsContext'
 
 export default function Layout({ children, setAuth }) {
     const navigate = useNavigate()
     const location = useLocation()
     const { t, i18n } = useTranslation()
+    const { settings } = useSettings()
     const user = JSON.parse(localStorage.getItem('user') || '{}')
 
     const handleLogout = () => {
@@ -32,6 +34,7 @@ export default function Layout({ children, setAuth }) {
         { name: t('nav.audit'), href: '/audit' },
         { name: t('nav.services'), href: '/services' },
         { name: t('nav.settings'), href: '/settings' },
+        { name: t('nav.manager'), href: '/manager' },
         { name: t('nav.help'), href: '/help' }
     ]
 
@@ -47,7 +50,17 @@ export default function Layout({ children, setAuth }) {
                     <div className="flex justify-between h-16">
                         <div className="flex">
                             <div className="flex-shrink-0 flex items-center">
-                                <h1 className="text-xl font-bold text-blue-600">Onlitec Email</h1>
+                                {settings.logo_url ? (
+                                    <img
+                                        src={settings.logo_url}
+                                        alt={settings.site_name || 'Logo'}
+                                        className="h-8 w-auto"
+                                    />
+                                ) : (
+                                    <h1 className="text-xl font-bold text-blue-600">
+                                        {settings.site_name || 'Onlitec Email'}
+                                    </h1>
+                                )}
                             </div>
                             <div className="hidden lg:ml-6 lg:flex lg:space-x-4">
                                 {navigation.map((item) => (

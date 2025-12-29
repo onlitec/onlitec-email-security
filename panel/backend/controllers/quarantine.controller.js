@@ -16,8 +16,9 @@ exports.list = async (req, res) => {
         const offset = (page - 1) * limit;
 
         let query = `
-            SELECT q.id, q.sender, q.recipient, q.subject, q.reason, q.score,
-                   q.status, q.quarantine_type, q.size_bytes, q.created_at,
+            SELECT q.id, q.from_address as sender, q.to_address as recipient, q.subject, 
+                   q.reason, q.spam_score as score,
+                   q.status, q.reason as quarantine_type, q.size_bytes, q.created_at,
                    t.name as tenant_name
             FROM quarantine q
             LEFT JOIN tenants t ON q.tenant_id = t.id
@@ -27,9 +28,9 @@ exports.list = async (req, res) => {
         let paramIndex = 1;
 
         if (status) { query += ` AND q.status = $${paramIndex++}`; params.push(status); }
-        if (type) { query += ` AND q.quarantine_type = $${paramIndex++}`; params.push(type); }
+        if (type) { query += ` AND q.reason = $${paramIndex++}`; params.push(type); }
         if (search) {
-            query += ` AND (q.sender ILIKE $${paramIndex} OR q.recipient ILIKE $${paramIndex} OR q.subject ILIKE $${paramIndex})`;
+            query += ` AND (q.from_address ILIKE $${paramIndex} OR q.to_address ILIKE $${paramIndex} OR q.subject ILIKE $${paramIndex})`;
             params.push(`%${search}%`);
             paramIndex++;
         }
@@ -90,7 +91,7 @@ exports.release = async (req, res) => {
             UPDATE quarantine 
             SET status = 'released', released_at = NOW(), released_by = $2
             WHERE id = $1 AND status = 'quarantined'
-            RETURNING id, sender, recipient, subject
+            RETURNING id, from_address as sender, to_address as recipient, subject
         `, [id, req.user?.email || 'admin']);
 
         if (result.rows.length === 0) {

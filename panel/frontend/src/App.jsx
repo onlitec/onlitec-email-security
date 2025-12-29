@@ -15,8 +15,12 @@ import Policies from './pages/Policies'
 import AuditLog from './pages/AuditLog'
 import Help from './pages/Help'
 import Services from './pages/Services'
+import Manager from './pages/Manager'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import Layout from './components/Layout'
 import { usePWA } from './hooks/usePWA'
+import { SettingsProvider } from './contexts/SettingsContext'
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -49,77 +53,82 @@ function App() {
     }
 
     return (
-        <Router>
-            {/* PWA Update Available Banner */}
-            {updateAvailable && (
-                <div className="fixed top-0 left-0 right-0 bg-blue-600 text-white px-4 py-3 flex items-center justify-between z-50">
-                    <span className="text-sm">
-                        🔄 {t('pwa.updateAvailable', 'Nova versão disponível!')}
-                    </span>
-                    <button
-                        onClick={reloadForUpdate}
-                        className="bg-white text-blue-600 px-3 py-1 rounded text-sm font-medium hover:bg-blue-50"
-                    >
-                        {t('pwa.updateNow', 'Atualizar agora')}
-                    </button>
-                </div>
-            )}
-
-            {/* PWA Install Banner */}
-            {isInstallable && !isInstalled && showInstallBanner && (
-                <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white px-4 py-3 flex items-center justify-between z-50 shadow-lg">
-                    <div className="flex items-center space-x-3">
-                        <span className="text-2xl">📱</span>
+        <SettingsProvider>
+            <Router>
+                {/* PWA Update Available Banner */}
+                {updateAvailable && (
+                    <div className="fixed top-0 left-0 right-0 bg-blue-600 text-white px-4 py-3 flex items-center justify-between z-50">
                         <span className="text-sm">
-                            {t('pwa.installPrompt', 'Instale o app para acesso rápido')}
+                            🔄 {t('pwa.updateAvailable', 'Nova versão disponível!')}
                         </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
                         <button
-                            onClick={() => setShowInstallBanner(false)}
-                            className="text-gray-400 hover:text-white px-2 py-1 text-sm"
+                            onClick={reloadForUpdate}
+                            className="bg-white text-blue-600 px-3 py-1 rounded text-sm font-medium hover:bg-blue-50"
                         >
-                            {t('common.later', 'Depois')}
-                        </button>
-                        <button
-                            onClick={handleInstall}
-                            className="bg-blue-500 hover:bg-blue-600 px-4 py-1 rounded text-sm font-medium"
-                        >
-                            {t('pwa.install', 'Instalar')}
+                            {t('pwa.updateNow', 'Atualizar agora')}
                         </button>
                     </div>
-                </div>
-            )}
+                )}
 
-            <Routes>
-                <Route path="/login" element={
-                    isAuthenticated ? <Navigate to="/" /> : <Login setAuth={setIsAuthenticated} />
-                } />
-                <Route path="/*" element={
-                    isAuthenticated ? (
-                        <Layout setAuth={setIsAuthenticated}>
-                            <Routes>
-                                <Route path="/" element={<Dashboard />} />
-                                <Route path="/tenants" element={<Tenants />} />
-                                <Route path="/domains" element={<Domains />} />
-                                <Route path="/users" element={<Users />} />
-                                <Route path="/aliases" element={<Aliases />} />
-                                <Route path="/policies" element={<Policies />} />
-                                <Route path="/quarantine" element={<Quarantine />} />
-                                <Route path="/logs" element={<Logs />} />
-                                <Route path="/audit" element={<AuditLog />} />
-                                <Route path="/settings" element={<Settings />} />
-                                <Route path="/profile" element={<Profile />} />
-                                <Route path="/help" element={<Help />} />
-                                <Route path="/services" element={<Services />} />
-                            </Routes>
-                        </Layout>
-                    ) : (
-                        <Navigate to="/login" />
-                    )
-                } />
-            </Routes>
-        </Router>
+                {/* PWA Install Banner */}
+                {isInstallable && !isInstalled && showInstallBanner && (
+                    <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white px-4 py-3 flex items-center justify-between z-50 shadow-lg">
+                        <div className="flex items-center space-x-3">
+                            <span className="text-2xl">📱</span>
+                            <span className="text-sm">
+                                {t('pwa.installPrompt', 'Instale o app para acesso rápido')}
+                            </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <button
+                                onClick={() => setShowInstallBanner(false)}
+                                className="text-gray-400 hover:text-white px-2 py-1 text-sm"
+                            >
+                                {t('common.later', 'Depois')}
+                            </button>
+                            <button
+                                onClick={handleInstall}
+                                className="bg-blue-500 hover:bg-blue-600 px-4 py-1 rounded text-sm font-medium"
+                            >
+                                {t('pwa.install', 'Instalar')}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <Routes>
+                    <Route path="/login" element={
+                        isAuthenticated ? <Navigate to="/" /> : <Login setAuth={setIsAuthenticated} />
+                    } />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/*" element={
+                        isAuthenticated ? (
+                            <Layout setAuth={setIsAuthenticated}>
+                                <Routes>
+                                    <Route path="/" element={<Dashboard />} />
+                                    <Route path="/tenants" element={<Tenants />} />
+                                    <Route path="/domains" element={<Domains />} />
+                                    <Route path="/users" element={<Users />} />
+                                    <Route path="/aliases" element={<Aliases />} />
+                                    <Route path="/policies" element={<Policies />} />
+                                    <Route path="/quarantine" element={<Quarantine />} />
+                                    <Route path="/logs" element={<Logs />} />
+                                    <Route path="/audit" element={<AuditLog />} />
+                                    <Route path="/settings" element={<Settings />} />
+                                    <Route path="/profile" element={<Profile />} />
+                                    <Route path="/help" element={<Help />} />
+                                    <Route path="/services" element={<Services />} />
+                                    <Route path="/manager" element={<Manager />} />
+                                </Routes>
+                            </Layout>
+                        ) : (
+                            <Navigate to="/login" />
+                        )
+                    } />
+                </Routes>
+            </Router>
+        </SettingsProvider>
     )
 }
 

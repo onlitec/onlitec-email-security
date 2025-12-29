@@ -226,7 +226,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme123!}
     volumes:
       - panel_logs:/var/log/panel
-      - ./panel/uploads:/app/uploads
+      - ./panel/uploads:/app/backend/public/uploads
     networks:
       onlitec_email_network:
         ipv4_address: 172.30.0.7

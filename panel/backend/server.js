@@ -26,6 +26,8 @@ const profileRoutes = require('./routes/profile');
 const aliasesRoutes = require('./routes/aliases');
 const auditRoutes = require('./routes/audit');
 const servicesRoutes = require('./routes/services');
+const managerRoutes = require('./routes/manager');
+const rolesRoutes = require('./routes/roles');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -147,6 +149,8 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/aliases', aliasesRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/services', servicesRoutes);
+app.use('/api/manager', managerRoutes);
+app.use('/api/roles', rolesRoutes);
 
 // Metrics endpoint
 app.get('/metrics', async (req, res) => {

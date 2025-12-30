@@ -1,0 +1,4 @@
+# Load Onlitec AI Intelligence Modules
+lua = "/etc/rspamd/scripts/ai_semantic.lua"
+lua = "/etc/rspamd/scripts/pdf_analyzer.lua"
+lua = "/etc/rspamd/scripts/url_intelligence.lua"

@@ -15,7 +15,7 @@ local rspamd_util = require "rspamd_util"
 local ucl = require "ucl"
 
 -- Configuration
-local pdf_analyzer_url = "http://onlitec_pdf_analyzer:8080/analyze"
+local pdf_analyzer_url = "http://pdf-analyzer:8080/analyze"
 local timeout = 3.0  -- PDFs may take longer to process
 local enabled = true
 
@@ -129,17 +129,20 @@ local function pdf_callback(task)
 end
 
 -- Register symbols
+-- Register parent callback symbol
+rspamd_config:register_symbol({
+  name = "PDF_ANALYZER_CHECK",
+  type = "callback",
+  callback = pdf_callback
+})
+
+-- Register virtual symbols
 rspamd_config:register_symbol({
   name = symbol_js,
   score = 10.0,
   description = "PDF contains JavaScript",
   group = "pdf_analyzer",
-  type = "virtual",
-  parent = rspamd_config:register_symbol({
-    name = "PDF_ANALYZER_CHECK",
-    type = "callback",
-    callback = pdf_callback
-  })
+  type = "virtual"
 })
 
 rspamd_config:register_symbol({
@@ -147,8 +150,7 @@ rspamd_config:register_symbol({
   score = 3.0,
   description = "PDF contains external URLs",
   group = "pdf_analyzer",
-  type = "virtual",
-  parent = rspamd_config:get_symbol_id("PDF_ANALYZER_CHECK")
+  type = "virtual"
 })
 
 rspamd_config:register_symbol({
@@ -156,8 +158,7 @@ rspamd_config:register_symbol({
   score = 5.0,
   description = "PDF contains embedded files",
   group = "pdf_analyzer",
-  type = "virtual",
-  parent = rspamd_config:get_symbol_id("PDF_ANALYZER_CHECK")
+  type = "virtual"
 })
 
 rspamd_config:register_symbol({
@@ -165,8 +166,7 @@ rspamd_config:register_symbol({
   score = 8.0,
   description = "PDF has high risk indicators",
   group = "pdf_analyzer",
-  type = "virtual",
-  parent = rspamd_config:get_symbol_id("PDF_ANALYZER_CHECK")
+  type = "virtual"
 })
 
 rspamd_logger.infox(rspamd_config, "PDF Analyzer module loaded")

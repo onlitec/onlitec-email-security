@@ -14,7 +14,7 @@ local rspamd_logger = require "rspamd_logger"
 local ucl = require "ucl"
 
 -- Configuration
-local url_intel_url = "http://onlitec_url_intel:8080/analyze/batch"
+local url_intel_url = "http://url-intel:8080/analyze/batch"
 local timeout = 2.0
 local enabled = true
 local max_urls = 10  -- Limit URLs per email
@@ -134,17 +134,20 @@ local function url_callback(task)
 end
 
 -- Register symbols
+-- Register parent callback symbol
+rspamd_config:register_symbol({
+  name = "URL_INTEL_CHECK",
+  type = "callback",
+  callback = url_callback
+})
+
+-- Register virtual symbols
 rspamd_config:register_symbol({
   name = symbol_critical,
   score = 12.0,
   description = "URL Intelligence: Critical risk URL",
   group = "url_intel",
-  type = "virtual",
-  parent = rspamd_config:register_symbol({
-    name = "URL_INTEL_CHECK",
-    type = "callback",
-    callback = url_callback
-  })
+  type = "virtual"
 })
 
 rspamd_config:register_symbol({
@@ -152,8 +155,7 @@ rspamd_config:register_symbol({
   score = 8.0,
   description = "URL Intelligence: High risk URL",
   group = "url_intel",
-  type = "virtual",
-  parent = rspamd_config:get_symbol_id("URL_INTEL_CHECK")
+  type = "virtual"
 })
 
 rspamd_config:register_symbol({
@@ -161,8 +163,7 @@ rspamd_config:register_symbol({
   score = 4.0,
   description = "URL Intelligence: Medium risk URL",
   group = "url_intel",
-  type = "virtual",
-  parent = rspamd_config:get_symbol_id("URL_INTEL_CHECK")
+  type = "virtual"
 })
 
 rspamd_config:register_symbol({
@@ -170,8 +171,7 @@ rspamd_config:register_symbol({
   score = 2.0,
   description = "URL shortener detected",
   group = "url_intel",
-  type = "virtual",
-  parent = rspamd_config:get_symbol_id("URL_INTEL_CHECK")
+  type = "virtual"
 })
 
 rspamd_logger.infox(rspamd_config, "URL Intelligence module loaded")

@@ -15,7 +15,7 @@ local lua_util = require "lua_util"
 local ucl = require "ucl"
 
 -- Configuration
-local ai_engine_url = "http://onlitec_ai_engine:8080/analyze"
+local ai_engine_url = "http://ai-engine:8080/analyze"
 local timeout = 2.0  -- seconds
 local enabled = true
 
@@ -57,14 +57,20 @@ local function ai_callback(task)
   end
   
   local subject = task:get_subject() or ""
-  local body = task:get_text_part()
   local body_text = ""
   
-  if body then
-    body_text = body:get_content() or ""
-    if #body_text > 10000 then
-      body_text = body_text:sub(1, 10000)
+  local text_parts = task:get_text_parts()
+  if text_parts then
+    for _, p in ipairs(text_parts) do
+        local content = p:get_content()
+        if content then
+             body_text = body_text .. content
+        end
     end
+  end
+  
+  if #body_text > 10000 then
+     body_text = body_text:sub(1, 10000)
   end
   
   local urls = extract_urls(task)
@@ -145,17 +151,20 @@ local function ai_callback(task)
 end
 
 -- Register symbols
+-- Register parent callback symbol
+rspamd_config:register_symbol({
+  name = "AI_SEMANTIC_CHECK",
+  type = "callback",
+  callback = ai_callback
+})
+
+-- Register virtual symbols
 rspamd_config:register_symbol({
   name = symbol_phishing,
   score = scores.phishing,
   description = "AI detected phishing content",
   group = "ai_semantic",
-  type = "virtual",
-  parent = rspamd_config:register_symbol({
-    name = "AI_SEMANTIC_CHECK",
-    type = "callback",
-    callback = ai_callback
-  })
+  type = "virtual"
 })
 
 rspamd_config:register_symbol({
@@ -163,8 +172,7 @@ rspamd_config:register_symbol({
   score = scores.fraud,
   description = "AI detected fraud content",
   group = "ai_semantic",
-  type = "virtual",
-  parent = rspamd_config:get_symbol_id("AI_SEMANTIC_CHECK")
+  type = "virtual"
 })
 
 rspamd_config:register_symbol({
@@ -172,8 +180,7 @@ rspamd_config:register_symbol({
   score = scores.spam,
   description = "AI detected spam content",
   group = "ai_semantic",
-  type = "virtual",
-  parent = rspamd_config:get_symbol_id("AI_SEMANTIC_CHECK")
+  type = "virtual"
 })
 
 rspamd_config:register_symbol({
@@ -181,8 +188,7 @@ rspamd_config:register_symbol({
   score = scores.legit,
   description = "AI classified as legitimate",
   group = "ai_semantic",
-  type = "virtual",
-  parent = rspamd_config:get_symbol_id("AI_SEMANTIC_CHECK")
+  type = "virtual"
 })
 
 rspamd_logger.infox(rspamd_config, "AI Semantic Engine module loaded")

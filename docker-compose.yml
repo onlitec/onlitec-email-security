@@ -243,13 +243,14 @@ services:
   # ==========================================================================
   # AI INTELLIGENCE LAYER (NEW)
   # ==========================================================================
-  
+
   # AI Semantic Engine - Phishing/Spam/Fraud Detection
   onlitec_ai_engine:
     build:
       context: ./ai-engine
       dockerfile: Dockerfile
     container_name: onlitec_ai_engine
+    hostname: ai-engine
     restart: unless-stopped
     environment:
       AI_ENGINE_DEBUG: ${AI_ENGINE_DEBUG:-false}
@@ -261,7 +262,7 @@ services:
       onlitec_email_network:
         ipv4_address: 172.30.0.10
     ports:
-      - "8081:8080"
+      - "8084:8080"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
       interval: 30s
@@ -280,6 +281,7 @@ services:
       context: ./pdf-analyzer
       dockerfile: Dockerfile
     container_name: onlitec_pdf_analyzer
+    hostname: pdf-analyzer
     restart: unless-stopped
     networks:
       onlitec_email_network:
@@ -303,6 +305,7 @@ services:
       context: ./url-intel
       dockerfile: Dockerfile
     container_name: onlitec_url_intel
+    hostname: url-intel
     restart: unless-stopped
     networks:
       onlitec_email_network:

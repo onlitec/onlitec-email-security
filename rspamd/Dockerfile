@@ -24,6 +24,7 @@ RUN mkdir -p /var/lib/rspamd \
 COPY local.d/ /etc/rspamd/local.d/
 COPY override.d/ /etc/rspamd/override.d/
 COPY scripts/ /etc/rspamd/scripts/
+COPY rspamd.conf.local /etc/rspamd/rspamd.conf.local
 
 # Copy entrypoint
 COPY scripts/entrypoint.sh /entrypoint.sh

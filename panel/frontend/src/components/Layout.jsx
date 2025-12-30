@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSettings } from '../contexts/SettingsContext'
@@ -8,6 +9,8 @@ export default function Layout({ children, setAuth }) {
     const { t, i18n } = useTranslation()
     const { settings } = useSettings()
     const user = JSON.parse(localStorage.getItem('user') || '{}')
+    const [settingsOpen, setSettingsOpen] = useState(false)
+    const settingsRef = useRef(null)
 
     const handleLogout = () => {
         localStorage.removeItem('token')
@@ -22,26 +25,47 @@ export default function Layout({ children, setAuth }) {
         i18n.changeLanguage(lng)
     }
 
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+                setSettingsOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    // Main navigation items (without settings-related items)
     const navigation = [
-        { name: t('nav.dashboard'), href: '/' },
-        { name: t('nav.tenants'), href: '/tenants' },
-        { name: t('nav.domains'), href: '/domains' },
-        { name: t('nav.users'), href: '/users' },
-        { name: t('nav.aliases'), href: '/aliases' },
-        { name: t('nav.policies'), href: '/policies' },
-        { name: t('nav.quarantine'), href: '/quarantine' },
-        { name: t('nav.logs'), href: '/logs' },
-        { name: t('nav.audit'), href: '/audit' },
-        { name: t('nav.services'), href: '/services' },
-        { name: t('nav.settings'), href: '/settings' },
-        { name: t('nav.manager'), href: '/manager' },
-        { name: t('nav.help'), href: '/help' }
+        { name: t('nav.dashboard'), href: '/', icon: '📊' },
+        { name: t('nav.tenants'), href: '/tenants', icon: '🏢' },
+        { name: t('nav.domains'), href: '/domains', icon: '🌐' },
+        { name: t('nav.users'), href: '/users', icon: '👥' },
+        { name: t('nav.aliases'), href: '/aliases', icon: '📧' },
+        { name: t('nav.policies'), href: '/policies', icon: '📜' },
+        { name: t('nav.quarantine'), href: '/quarantine', icon: '🔒' },
+        { name: t('nav.quarantine'), href: '/quarantine', icon: '🔒' },
+        { name: t('nav.aiVerdicts', 'IA'), href: '/ai-verdicts', icon: '🧠' }
+    ]
+
+    // Settings dropdown items
+    const settingsItems = [
+        { name: t('nav.settings', 'Configurações'), href: '/settings', icon: '⚙️' },
+        { name: t('nav.manager', 'Gerenciamento'), href: '/manager', icon: '🔧' },
+        { name: t('nav.services', 'Serviços'), href: '/services', icon: '⚡' },
+        { name: t('nav.logs', 'Logs'), href: '/logs', icon: '📝' },
+        { name: t('nav.audit', 'Auditoria'), href: '/audit', icon: '📋' },
+        { name: t('nav.profile', 'Meu Perfil'), href: '/profile', icon: '👤' },
+        { name: t('nav.help'), href: '/help', icon: '❓' },
     ]
 
     const isActive = (href) => {
         if (href === '/') return location.pathname === '/'
         return location.pathname.startsWith(href)
     }
+
+    const isSettingsActive = settingsItems.some(item => isActive(item.href))
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -72,31 +96,84 @@ export default function Layout({ children, setAuth }) {
                                             : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                             }`}
                                     >
+                                        <span className="mr-1">{item.icon}</span>
                                         {item.name}
                                     </Link>
                                 ))}
+
+                                {/* Settings Dropdown */}
+                                <div className="relative" ref={settingsRef}>
+                                    <button
+                                        onClick={() => setSettingsOpen(!settingsOpen)}
+                                        className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium h-full ${isSettingsActive
+                                            ? 'border-blue-500 text-gray-900'
+                                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                            }`}
+                                    >
+                                        <span className="mr-1">🛡️</span>
+                                        {t('nav.admin', 'Admin')}
+                                        <svg className={`ml-1 h-4 w-4 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    {settingsOpen && (
+                                        <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                                            <div className="py-1">
+                                                {settingsItems.map((item) => (
+                                                    <Link
+                                                        key={item.href}
+                                                        to={item.href}
+                                                        onClick={() => setSettingsOpen(false)}
+                                                        className={`flex items-center px-4 py-2 text-sm ${isActive(item.href)
+                                                            ? 'bg-blue-50 text-blue-700'
+                                                            : 'text-gray-700 hover:bg-gray-100'
+                                                            }`}
+                                                    >
+                                                        <span className="mr-3 text-lg">{item.icon}</span>
+                                                        {item.name}
+                                                    </Link>
+                                                ))}
+
+                                                {/* Language Selector in dropdown */}
+                                                <div className="border-t border-gray-100 mt-1 pt-1">
+                                                    <div className="px-4 py-2">
+                                                        <p className="text-xs text-gray-500 mb-2">🌍 {t('nav.language', 'Idioma')}</p>
+                                                        <div className="flex space-x-2">
+                                                            <button
+                                                                onClick={() => changeLanguage('pt-BR')}
+                                                                className={`px-3 py-1 rounded text-sm ${i18n.language === 'pt-BR' || i18n.language === 'pt'
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                    }`}
+                                                            >
+                                                                🇧🇷 PT
+                                                            </button>
+                                                            <button
+                                                                onClick={() => changeLanguage('en')}
+                                                                className={`px-3 py-1 rounded text-sm ${i18n.language === 'en'
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                                    }`}
+                                                            >
+                                                                🇺🇸 EN
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center space-x-4">
-                            {/* Language Selector */}
-                            <div className="relative">
-                                <select
-                                    value={i18n.language}
-                                    onChange={(e) => changeLanguage(e.target.value)}
-                                    className="appearance-none bg-gray-100 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                                >
-                                    <option value="pt-BR">🇧🇷 PT</option>
-                                    <option value="en">🇺🇸 EN</option>
-                                </select>
-                            </div>
-                            <Link to="/profile" className="text-sm text-gray-700 hover:text-blue-600">
-                                {user.email}
-                            </Link>
+                        <div className="flex items-center space-x-4 ml-auto pl-4 flex-shrink-0">
                             <button
                                 onClick={handleLogout}
-                                className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700"
+                                className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 flex items-center space-x-1"
                             >
-                                {t('nav.logout')}
+                                <span>🚪</span>
+                                <span>{t('nav.logout')}</span>
                             </button>
                         </div>
                     </div>

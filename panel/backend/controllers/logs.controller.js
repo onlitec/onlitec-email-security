@@ -176,7 +176,18 @@ exports.ingest = async (req, res) => {
             const logId = logResult.rows[0].id;
 
             // Process AI Symbols if present
-            const symbols = log.symbols || {};
+            const rawSymbols = log.symbols || [];
+            const symbols = {};
+
+            // Normalize symbols to map { NAME: symbolObject }
+            if (Array.isArray(rawSymbols)) {
+                rawSymbols.forEach(s => symbols[s.name] = s);
+            } else if (typeof rawSymbols === 'object') {
+                Object.assign(symbols, rawSymbols);
+            }
+
+            logger.info('INSPECT SYMBOLS (Normalised):', JSON.stringify(symbols));
+
             let aiLabel = null;
             let aiScore = 0;
             let aiConfidence = 0;

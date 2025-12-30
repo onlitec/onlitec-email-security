@@ -28,6 +28,7 @@ const auditRoutes = require('./routes/audit');
 const servicesRoutes = require('./routes/services');
 const managerRoutes = require('./routes/manager');
 const rolesRoutes = require('./routes/roles');
+const configRoutes = require('./routes/config');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -41,16 +42,21 @@ const PORT = process.env.PORT || 9080;
 // MIDDLEWARE
 // ============================================
 
-// Security
+// Security - Environment-aware configuration
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(helmet({
-    contentSecurityPolicy: {
+    contentSecurityPolicy: isProduction ? {
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             scriptSrc: ["'self'"],
             imgSrc: ["'self'", "data:", "https:"],
         },
-    },
+    } : false, // Disable CSP in development
+    crossOriginOpenerPolicy: isProduction ? { policy: 'same-origin' } : false,
+    crossOriginEmbedderPolicy: isProduction,
+    originAgentCluster: isProduction,
+    hsts: isProduction, // Only enable HSTS in production
 }));
 
 // CORS
@@ -151,6 +157,7 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/manager', managerRoutes);
 app.use('/api/roles', rolesRoutes);
+app.use('/api/config', configRoutes);
 
 // Metrics endpoint
 app.get('/metrics', async (req, res) => {

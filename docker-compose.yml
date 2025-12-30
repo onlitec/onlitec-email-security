@@ -13,6 +13,7 @@ volumes:
   redis_data:
   postgres_data:
   panel_logs:
+  ai_models:
 
 
 services:
@@ -238,3 +239,83 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  # ==========================================================================
+  # AI INTELLIGENCE LAYER (NEW)
+  # ==========================================================================
+  
+  # AI Semantic Engine - Phishing/Spam/Fraud Detection
+  onlitec_ai_engine:
+    build:
+      context: ./ai-engine
+      dockerfile: Dockerfile
+    container_name: onlitec_ai_engine
+    restart: unless-stopped
+    environment:
+      AI_ENGINE_DEBUG: ${AI_ENGINE_DEBUG:-false}
+      AI_ENGINE_LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      AI_ENGINE_MODEL_NAME: ${AI_MODEL_NAME:-distilbert-base-uncased}
+    volumes:
+      - ai_models:/app/models
+    networks:
+      onlitec_email_network:
+        ipv4_address: 172.30.0.10
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+
+  # PDF Analyzer - Extract text/URLs and detect malicious PDFs
+  onlitec_pdf_analyzer:
+    build:
+      context: ./pdf-analyzer
+      dockerfile: Dockerfile
+    container_name: onlitec_pdf_analyzer
+    restart: unless-stopped
+    networks:
+      onlitec_email_network:
+        ipv4_address: 172.30.0.11
+    ports:
+      - "8082:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  # URL Intelligence - Heuristic URL analysis
+  onlitec_url_intel:
+    build:
+      context: ./url-intel
+      dockerfile: Dockerfile
+    container_name: onlitec_url_intel
+    restart: unless-stopped
+    networks:
+      onlitec_email_network:
+        ipv4_address: 172.30.0.12
+    ports:
+      - "8083:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M

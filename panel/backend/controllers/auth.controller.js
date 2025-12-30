@@ -2,18 +2,19 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const logger = require('../config/logger');
+const config = require('../config');
 
 const pool = new Pool({
-    host: process.env.POSTGRES_HOST || 'onlitec_emailprotect_db',
-    port: process.env.POSTGRES_PORT || 5432,
-    database: process.env.POSTGRES_DB || 'emailprotect',
-    user: process.env.POSTGRES_USER || 'emailprotect',
-    password: process.env.POSTGRES_PASSWORD || 'changeme123'
+    host: config.database.host,
+    port: config.database.port,
+    database: config.database.name,
+    user: config.database.user,
+    password: config.database.password
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRES_IN = '15m';
-const REFRESH_TOKEN_EXPIRES_IN = '7d';
+const JWT_SECRET = config.auth.jwtSecret;
+const JWT_EXPIRES_IN = config.auth.jwtExpiresIn;
+const REFRESH_TOKEN_EXPIRES_IN = config.auth.refreshTokenExpiresIn;
 
 // Login
 exports.login = async (req, res, next) => {

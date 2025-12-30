@@ -242,9 +242,122 @@ const checkPostgreSQL = async () => {
     }
 };
 
+// Check AI Engine status
+const checkAIEngine = async () => {
+    const host = process.env.AI_ENGINE_HOST || 'onlitec_ai_engine';
+    const port = parseInt(process.env.AI_ENGINE_PORT) || 8080;
+
+    try {
+        const result = await httpGet(`http://${host}:${port}/health`);
+
+        if (result.online && result.statusCode === 200) {
+            const data = JSON.parse(result.data || '{}');
+            return {
+                name: 'AI Engine',
+                status: 'online',
+                host,
+                port,
+                message: data.status === 'healthy' ? 'Model loaded and ready' : 'Service responding',
+                version: data.version || 'unknown',
+                modelLoaded: data.model_loaded || false,
+                uptime: data.uptime_seconds || 0
+            };
+        }
+
+        return {
+            name: 'AI Engine',
+            status: 'offline',
+            host,
+            port,
+            error: result.error || 'Invalid response'
+        };
+    } catch (error) {
+        return {
+            name: 'AI Engine',
+            status: 'offline',
+            error: error.message
+        };
+    }
+};
+
+// Check PDF Analyzer status
+const checkPDFAnalyzer = async () => {
+    const host = process.env.PDF_ANALYZER_HOST || 'onlitec_pdf_analyzer';
+    const port = parseInt(process.env.PDF_ANALYZER_PORT) || 8080;
+
+    try {
+        const result = await httpGet(`http://${host}:${port}/health`);
+
+        if (result.online && result.statusCode === 200) {
+            const data = JSON.parse(result.data || '{}');
+            return {
+                name: 'PDF Analyzer',
+                status: 'online',
+                host,
+                port,
+                message: 'PDF analysis service ready',
+                version: data.version || 'unknown',
+                uptime: data.uptime_seconds || 0
+            };
+        }
+
+        return {
+            name: 'PDF Analyzer',
+            status: 'offline',
+            host,
+            port,
+            error: result.error || 'Invalid response'
+        };
+    } catch (error) {
+        return {
+            name: 'PDF Analyzer',
+            status: 'offline',
+            error: error.message
+        };
+    }
+};
+
+// Check URL Intelligence status
+const checkURLIntel = async () => {
+    const host = process.env.URL_INTEL_HOST || 'onlitec_url_intel';
+    const port = parseInt(process.env.URL_INTEL_PORT) || 8080;
+
+    try {
+        const result = await httpGet(`http://${host}:${port}/health`);
+
+        if (result.online && result.statusCode === 200) {
+            const data = JSON.parse(result.data || '{}');
+            return {
+                name: 'URL Intelligence',
+                status: 'online',
+                host,
+                port,
+                message: 'URL analysis service ready',
+                version: data.version || 'unknown',
+                uptime: data.uptime_seconds || 0
+            };
+        }
+
+        return {
+            name: 'URL Intelligence',
+            status: 'offline',
+            host,
+            port,
+            error: result.error || 'Invalid response'
+        };
+    } catch (error) {
+        return {
+            name: 'URL Intelligence',
+            status: 'offline',
+            error: error.message
+        };
+    }
+};
+
 // Get all services status
 exports.getStatus = async (req, res) => {
     try {
+        // Check core services
         const [clamav, rspamd, postfix, redis, postgresql] = await Promise.all([
             checkClamAV(),
             checkRspamd(),
@@ -253,15 +366,35 @@ exports.getStatus = async (req, res) => {
             checkPostgreSQL()
         ]);
 
-        const services = [clamav, rspamd, postfix, redis, postgresql];
-        const allOnline = services.every(s => s.status === 'online');
-        const someOffline = services.some(s => s.status === 'offline');
+        // Check AI services (optional, may not be deployed)
+        const [aiEngine, pdfAnalyzer, urlIntel] = await Promise.all([
+            checkAIEngine(),
+            checkPDFAnalyzer(),
+            checkURLIntel()
+        ]);
+
+        const coreServices = [clamav, rspamd, postfix, redis, postgresql];
+        const aiServices = [aiEngine, pdfAnalyzer, urlIntel];
+        const allServices = [...coreServices, ...aiServices];
+
+        const coreOnline = coreServices.every(s => s.status === 'online');
+        const coreOffline = coreServices.some(s => s.status === 'offline');
+        const aiOnline = aiServices.filter(s => s.status === 'online').length;
 
         res.json({
             success: true,
             data: {
-                overall: allOnline ? 'healthy' : (someOffline ? 'degraded' : 'critical'),
-                services,
+                overall: coreOnline ? 'healthy' : (coreOffline ? 'degraded' : 'critical'),
+                coreServices,
+                aiServices,
+                services: allServices, // For backward compatibility
+                summary: {
+                    totalServices: allServices.length,
+                    online: allServices.filter(s => s.status === 'online').length,
+                    offline: allServices.filter(s => s.status === 'offline').length,
+                    aiActive: aiOnline,
+                    aiTotal: aiServices.length
+                },
                 timestamp: new Date().toISOString()
             }
         });

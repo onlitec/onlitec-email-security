@@ -21,21 +21,24 @@ const serviceIcons = {
     Rspamd: '📧',
     Postfix: '📮',
     Redis: '💾',
-    PostgreSQL: '🗄️'
+    PostgreSQL: '🗄️',
+    'AI Engine': '🧠',
+    'PDF Analyzer': '📄',
+    'URL Intelligence': '🌐'
 }
 
-function ServiceCard({ service }) {
+function ServiceCard({ service, isAI = false }) {
     const { t } = useTranslation()
     const status = service.status || 'unknown'
 
     return (
-        <div className={`bg-white rounded-lg shadow-md border-2 ${statusColors[status]} p-6 transition-all hover:shadow-lg`}>
+        <div className={`bg-white rounded-lg shadow-md border-2 ${statusColors[status]} p-6 transition-all hover:shadow-lg ${isAI ? 'ring-2 ring-purple-200' : ''}`}>
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
                     <span className="text-3xl">{serviceIcons[service.name] || '⚙️'}</span>
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900">{service.name}</h3>
-                        <p className="text-sm text-gray-500">{t(`services.${service.name.toLowerCase()}`, service.name)}</p>
+                        {isAI && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">AI Service</span>}
                     </div>
                 </div>
                 <span className="text-2xl">{statusIcons[status]}</span>
@@ -67,6 +70,29 @@ function ServiceCard({ service }) {
                     <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">{t('services.ports', 'Portas')}:</span>
                         <span className="text-sm font-mono text-gray-800">{service.ports.join(', ')}</span>
+                    </div>
+                )}
+
+                {service.version && (
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Versão:</span>
+                        <span className="text-sm font-mono text-gray-800">{service.version}</span>
+                    </div>
+                )}
+
+                {service.uptime !== undefined && service.uptime > 0 && (
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Uptime:</span>
+                        <span className="text-sm font-mono text-gray-800">{formatUptime(service.uptime)}</span>
+                    </div>
+                )}
+
+                {service.modelLoaded !== undefined && (
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Modelo:</span>
+                        <span className={`text-sm font-medium ${service.modelLoaded ? 'text-green-600' : 'text-red-600'}`}>
+                            {service.modelLoaded ? '✅ Carregado' : '❌ Não carregado'}
+                        </span>
                     </div>
                 )}
 
@@ -115,11 +141,40 @@ function MetricsCard({ title, metrics }) {
     )
 }
 
+function AIStatusBanner({ aiServices, summary }) {
+    const aiOnline = aiServices?.filter(s => s.status === 'online').length || 0
+    const aiTotal = aiServices?.length || 0
+    const allAIOnline = aiOnline === aiTotal && aiTotal > 0
+
+    return (
+        <div className={`p-4 rounded-lg ${allAIOnline ? 'bg-purple-50 border border-purple-200' : 'bg-orange-50 border border-orange-200'}`}>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                    <span className="text-2xl">🤖</span>
+                    <div>
+                        <p className={`font-medium ${allAIOnline ? 'text-purple-800' : 'text-orange-800'}`}>
+                            AI Intelligence Layer
+                        </p>
+                        <p className={`text-sm ${allAIOnline ? 'text-purple-600' : 'text-orange-600'}`}>
+                            {aiOnline} de {aiTotal} serviços de IA ativos
+                        </p>
+                    </div>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${allAIOnline ? 'bg-purple-200 text-purple-800' : 'bg-orange-200 text-orange-800'}`}>
+                    {allAIOnline ? '✅ Ativo' : '⚠️ Parcial'}
+                </div>
+            </div>
+        </div>
+    )
+}
+
 export default function Services() {
     const { t } = useTranslation()
-    const [services, setServices] = useState([])
+    const [coreServices, setCoreServices] = useState([])
+    const [aiServices, setAIServices] = useState([])
     const [metrics, setMetrics] = useState(null)
     const [overall, setOverall] = useState('unknown')
+    const [summary, setSummary] = useState(null)
     const [loading, setLoading] = useState(true)
     const [lastUpdate, setLastUpdate] = useState(null)
     const [autoRefresh, setAutoRefresh] = useState(true)
@@ -128,8 +183,10 @@ export default function Services() {
         try {
             const { data } = await api.get('/services/status')
             if (data.success) {
-                setServices(data.data.services || [])
+                setCoreServices(data.data.coreServices || data.data.services || [])
+                setAIServices(data.data.aiServices || [])
                 setOverall(data.data.overall || 'unknown')
+                setSummary(data.data.summary || null)
                 setLastUpdate(new Date())
             }
         } catch (err) {
@@ -212,6 +269,28 @@ export default function Services() {
                 </div>
             </div>
 
+            {/* Summary Cards */}
+            {summary && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-lg shadow p-4 text-center">
+                        <p className="text-3xl font-bold text-blue-600">{summary.totalServices}</p>
+                        <p className="text-sm text-gray-600">Total de Serviços</p>
+                    </div>
+                    <div className="bg-white rounded-lg shadow p-4 text-center">
+                        <p className="text-3xl font-bold text-green-600">{summary.online}</p>
+                        <p className="text-sm text-gray-600">Online</p>
+                    </div>
+                    <div className="bg-white rounded-lg shadow p-4 text-center">
+                        <p className="text-3xl font-bold text-red-600">{summary.offline}</p>
+                        <p className="text-sm text-gray-600">Offline</p>
+                    </div>
+                    <div className="bg-white rounded-lg shadow p-4 text-center">
+                        <p className="text-3xl font-bold text-purple-600">{summary.aiActive}/{summary.aiTotal}</p>
+                        <p className="text-sm text-gray-600">AI Ativos</p>
+                    </div>
+                </div>
+            )}
+
             {/* Overall Status Banner */}
             <div className={`border-l-4 p-4 rounded-r-lg ${overallColors[overall]}`}>
                 <div className="flex items-center justify-between">
@@ -222,7 +301,7 @@ export default function Services() {
                         <div>
                             <p className="font-medium">
                                 {overall === 'healthy'
-                                    ? t('services.allServicesOnline', 'Todos os serviços estão online')
+                                    ? t('services.allServicesOnline', 'Todos os serviços core estão online')
                                     : overall === 'degraded'
                                         ? t('services.someServicesOffline', 'Alguns serviços apresentam problemas')
                                         : t('services.criticalIssues', 'Problemas críticos detectados')}
@@ -237,11 +316,34 @@ export default function Services() {
                 </div>
             </div>
 
-            {/* Services Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {services.map((service, index) => (
-                    <ServiceCard key={service.name || index} service={service} />
-                ))}
+            {/* AI Services Section */}
+            {aiServices && aiServices.length > 0 && (
+                <div className="space-y-4">
+                    <AIStatusBanner aiServices={aiServices} summary={summary} />
+
+                    <h3 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
+                        <span>🤖</span>
+                        <span>Serviços de Inteligência Artificial</span>
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {aiServices.map((service, index) => (
+                            <ServiceCard key={service.name || index} service={service} isAI={true} />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Core Services Section */}
+            <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
+                    <span>⚙️</span>
+                    <span>Serviços Core</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {coreServices.map((service, index) => (
+                        <ServiceCard key={service.name || index} service={service} />
+                    ))}
+                </div>
             </div>
 
             {/* Metrics Section */}
@@ -297,4 +399,19 @@ function formatBytes(bytes) {
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+// Helper function to format uptime
+function formatUptime(seconds) {
+    if (!seconds) return '0s'
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = Math.floor(seconds % 60)
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`
+    } else if (minutes > 0) {
+        return `${minutes}m ${secs}s`
+    }
+    return `${secs}s`
 }

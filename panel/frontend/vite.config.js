@@ -2,10 +2,14 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Check if we're in production
+const isProduction = process.env.NODE_ENV === 'production'
+
 export default defineConfig({
     plugins: [
         react(),
-        VitePWA({
+        // Only enable PWA in production (requires HTTPS)
+        ...(isProduction ? [VitePWA({
             registerType: 'autoUpdate',
             includeAssets: ['icons/*.png', 'manifest.json'],
             manifest: false, // We use our own manifest.json
@@ -56,11 +60,8 @@ export default defineConfig({
                         }
                     }
                 ]
-            },
-            devOptions: {
-                enabled: true
             }
-        })
+        })] : [])
     ],
     server: {
         port: 3000,
@@ -76,4 +77,3 @@ export default defineConfig({
         emptyOutDir: true
     }
 })
-

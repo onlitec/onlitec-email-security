@@ -1,0 +1,15 @@
+{
+    "name": "url-intel",
+    "version": "1.0.0",
+    "description": "URL Intelligence for Email Security",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "cors": "^2.8.5",
+        "prom-client": "^15.1.0",
+        "tldts": "^6.1.0"
+    }
+}

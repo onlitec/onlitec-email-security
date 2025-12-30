@@ -162,15 +162,55 @@ exports.ingest = async (req, res) => {
             const is_spam = spam_score > 15 || log.action === 'reject';
             const tenant_id = log.tenant_id || 'c3f5a2bf-d447-4729-95f9-61215bdf5275'; // Fallback to ONLITEC
 
-            await pool.query(`
+            const logResult = await pool.query(`
                 INSERT INTO mail_logs (
                     tenant_id, message_id, from_address, to_address, subject, 
                     size_bytes, direction, status, spam_score, is_spam, created_at
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+                RETURNING id
             `, [
                 tenant_id, message_id, from_address, to_address, subject,
                 size_bytes, direction, status, spam_score, is_spam
             ]);
+
+            const logId = logResult.rows[0].id;
+
+            // Process AI Symbols if present
+            const symbols = log.symbols || {};
+            let aiLabel = null;
+            let aiScore = 0;
+            let aiConfidence = 0;
+            let aiReasons = [];
+
+            if (symbols['AI_PHISHING']) {
+                aiLabel = 'phishing';
+                aiScore = symbols['AI_PHISHING'].score || 15;
+                aiConfidence = 0.95;
+                if (symbols['AI_PHISHING'].options) aiReasons = symbols['AI_PHISHING'].options;
+            } else if (symbols['AI_FRAUD']) {
+                aiLabel = 'fraud';
+                aiScore = symbols['AI_FRAUD'].score || 12;
+                aiConfidence = 0.90;
+                if (symbols['AI_FRAUD'].options) aiReasons = symbols['AI_FRAUD'].options;
+            } else if (symbols['AI_SPAM']) {
+                aiLabel = 'spam';
+                aiScore = symbols['AI_SPAM'].score || 8;
+                aiConfidence = 0.85;
+                if (symbols['AI_SPAM'].options) aiReasons = symbols['AI_SPAM'].options;
+            } else if (symbols['AI_LEGIT']) {
+                aiLabel = 'legit';
+                aiScore = symbols['AI_LEGIT'].score || 0;
+                aiConfidence = 0.99;
+                if (symbols['AI_LEGIT'].options) aiReasons = symbols['AI_LEGIT'].options;
+            }
+
+            if (aiLabel) {
+                await pool.query(
+                    `INSERT INTO ai_verdicts (mail_log_id, ai_label, ai_score, ai_confidence, ai_reasons)
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    [logId, aiLabel, aiScore, aiConfidence, JSON.stringify(aiReasons)]
+                );
+            }
         }
 
         res.json({ success: true, count: logs.length });

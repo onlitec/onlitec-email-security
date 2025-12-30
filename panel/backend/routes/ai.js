@@ -12,16 +12,6 @@ const pool = new Pool({
     password: process.env.POSTGRES_PASSWORD || 'changeme123'
 });
 
-// Helper to convert numeric fields
-const convertVerdict = (row) => ({
-    ...row,
-    ai_confidence: row.ai_confidence ? parseFloat(row.ai_confidence) : 0,
-    ai_score: row.ai_score ? parseFloat(row.ai_score) : 0,
-    pdf_risk_score: row.pdf_risk_score ? parseFloat(row.pdf_risk_score) : 0,
-    url_max_score: row.url_max_score ? parseFloat(row.url_max_score) : 0,
-    total_score: row.total_score ? parseFloat(row.total_score) : 0
-});
-
 // All routes require authentication
 router.use(authenticateToken);
 
@@ -37,12 +27,11 @@ router.get('/verdicts', async (req, res) => {
 
         let query = `
             SELECT 
-                id, message_id, subject, sender, recipient,
-                ai_label, ai_confidence, ai_score, ai_reasons,
-                pdf_has_js, pdf_has_links, pdf_risk_score,
-                url_max_risk, url_max_score,
-                final_action, total_score, processed_at
-            FROM ai_verdicts
+                av.id, av.ai_label, av.ai_confidence, av.ai_score, av.ai_reasons, av.created_at as processed_at,
+                ml.message_id, ml.subject, ml.from_address as sender, ml.to_address as recipient,
+                ml.status as final_action, ml.spam_score as total_score
+            FROM ai_verdicts av
+            JOIN mail_logs ml ON av.mail_log_id = ml.id
             WHERE 1=1
         `;
         const params = [];
@@ -50,34 +39,36 @@ router.get('/verdicts', async (req, res) => {
 
         if (label) {
             paramCount++;
-            query += ` AND ai_label = $${paramCount}`;
+            query += ` AND av.ai_label = $${paramCount}`;
             params.push(label);
         }
 
         if (dateFrom) {
             paramCount++;
-            query += ` AND processed_at >= $${paramCount}`;
+            query += ` AND av.created_at >= $${paramCount}`;
             params.push(dateFrom);
         }
 
         if (dateTo) {
             paramCount++;
-            query += ` AND processed_at <= $${paramCount}`;
+            query += ` AND av.created_at <= $${paramCount}`;
             params.push(dateTo);
         }
 
-        query += ` ORDER BY processed_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+        query += ` ORDER BY av.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
         params.push(limit, offset);
 
         const result = await pool.query(query, params);
 
         // Get total count
-        let countQuery = 'SELECT COUNT(*) FROM ai_verdicts WHERE 1=1';
+        let countQuery = 'SELECT COUNT(*) FROM ai_verdicts av WHERE 1=1';
         const countParams = [];
+        let countParamIndex = 1;
 
         if (label) {
-            countQuery += ' AND ai_label = $1';
+            countQuery += ` AND av.ai_label = $${countParamIndex}`;
             countParams.push(label);
+            countParamIndex++;
         }
 
         const countResult = await pool.query(countQuery, countParams);
@@ -86,7 +77,12 @@ router.get('/verdicts', async (req, res) => {
         res.json({
             success: true,
             data: {
-                verdicts: result.rows.map(convertVerdict),
+                verdicts: result.rows.map(row => ({
+                    ...row,
+                    ai_confidence: parseFloat(row.ai_confidence),
+                    ai_score: parseFloat(row.ai_score),
+                    total_score: parseFloat(row.total_score || 0)
+                })),
                 pagination: {
                     page,
                     limit,
@@ -99,7 +95,7 @@ router.get('/verdicts', async (req, res) => {
         logger.error('Error fetching AI verdicts:', error);
         res.status(500).json({
             success: false,
-            error: { code: 'FETCH_ERROR', message: 'Failed to fetch AI verdicts' }
+            error: { code: 'FETCH_ERROR', message: 'Failed to fetch AI verdicts: ' + error.message }
         });
     }
 });
@@ -114,24 +110,21 @@ router.get('/verdicts/stats', async (req, res) => {
                 COUNT(*) FILTER (WHERE ai_label = 'fraud') as fraud,
                 COUNT(*) FILTER (WHERE ai_label = 'spam') as spam,
                 COUNT(*) FILTER (WHERE ai_label = 'legit') as legit,
-                COUNT(*) FILTER (WHERE pdf_has_js = true) as pdf_with_js,
-                COUNT(*) FILTER (WHERE url_max_risk IN ('critical', 'high')) as risky_urls,
-                AVG(ai_score) as avg_ai_score,
-                AVG(total_score) as avg_total_score
+                AVG(ai_score) as avg_ai_score
             FROM ai_verdicts
-            WHERE processed_at >= CURRENT_DATE - INTERVAL '7 days'
+            WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
         `);
 
         const dailyStats = await pool.query(`
             SELECT 
-                DATE(processed_at) as date,
+                DATE(created_at) as date,
                 COUNT(*) as total,
                 COUNT(*) FILTER (WHERE ai_label = 'phishing') as phishing,
                 COUNT(*) FILTER (WHERE ai_label = 'spam') as spam,
                 COUNT(*) FILTER (WHERE ai_label = 'legit') as legit
             FROM ai_verdicts
-            WHERE processed_at >= CURRENT_DATE - INTERVAL '7 days'
-            GROUP BY DATE(processed_at)
+            WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+            GROUP BY DATE(created_at)
             ORDER BY date DESC
         `);
 
@@ -143,10 +136,7 @@ router.get('/verdicts/stats', async (req, res) => {
             fraud: parseInt(summary.fraud) || 0,
             spam: parseInt(summary.spam) || 0,
             legit: parseInt(summary.legit) || 0,
-            pdf_with_js: parseInt(summary.pdf_with_js) || 0,
-            risky_urls: parseInt(summary.risky_urls) || 0,
-            avg_ai_score: parseFloat(summary.avg_ai_score) || 0,
-            avg_total_score: parseFloat(summary.avg_total_score) || 0
+            avg_ai_score: parseFloat(summary.avg_ai_score) || 0
         };
 
         res.json({
@@ -175,10 +165,15 @@ router.get('/verdicts/stats', async (req, res) => {
 router.get('/verdicts/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(
-            'SELECT * FROM ai_verdicts WHERE id = $1',
-            [id]
-        );
+        const result = await pool.query(`
+            SELECT 
+                av.id, av.ai_label, av.ai_confidence, av.ai_score, av.ai_reasons, av.created_at as processed_at,
+                ml.message_id, ml.subject, ml.from_address as sender, ml.to_address as recipient,
+                ml.status as final_action, ml.spam_score as total_score
+            FROM ai_verdicts av
+            JOIN mail_logs ml ON av.mail_log_id = ml.id
+            WHERE av.id = $1
+        `, [id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({
@@ -187,56 +182,21 @@ router.get('/verdicts/:id', async (req, res) => {
             });
         }
 
+        const row = result.rows[0];
         res.json({
             success: true,
-            data: result.rows[0]
+            data: {
+                ...row,
+                ai_confidence: parseFloat(row.ai_confidence),
+                ai_score: parseFloat(row.ai_score),
+                total_score: parseFloat(row.total_score || 0)
+            }
         });
     } catch (error) {
         logger.error('Error fetching verdict:', error);
         res.status(500).json({
             success: false,
             error: { code: 'FETCH_ERROR', message: 'Failed to fetch verdict' }
-        });
-    }
-});
-
-// POST /api/ai/verdicts - Store new verdict (called by Rspamd)
-router.post('/verdicts', async (req, res) => {
-    try {
-        const {
-            message_id, subject, sender, recipient,
-            ai_label, ai_confidence, ai_score, ai_reasons,
-            pdf_has_js, pdf_has_links, pdf_risk_score, pdf_urls,
-            url_max_risk, url_max_score, url_risky_urls,
-            final_action, total_score, tenant_id
-        } = req.body;
-
-        const result = await pool.query(`
-            INSERT INTO ai_verdicts (
-                message_id, subject, sender, recipient,
-                ai_label, ai_confidence, ai_score, ai_reasons,
-                pdf_has_js, pdf_has_links, pdf_risk_score, pdf_urls,
-                url_max_risk, url_max_score, url_risky_urls,
-                final_action, total_score, tenant_id
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-            RETURNING id
-        `, [
-            message_id, subject, sender, recipient,
-            ai_label, ai_confidence, ai_score, ai_reasons,
-            pdf_has_js, pdf_has_links, pdf_risk_score, pdf_urls,
-            url_max_risk, url_max_score, url_risky_urls,
-            final_action, total_score, tenant_id
-        ]);
-
-        res.json({
-            success: true,
-            data: { id: result.rows[0].id }
-        });
-    } catch (error) {
-        logger.error('Error storing verdict:', error);
-        res.status(500).json({
-            success: false,
-            error: { code: 'STORE_ERROR', message: 'Failed to store verdict' }
         });
     }
 });

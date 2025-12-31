@@ -26,7 +26,7 @@ export default function Manager() {
             setSettings(data.data || {})
         } catch (err) {
             console.error(err)
-            setMessage({ type: 'error', text: 'Error fetching settings' })
+            setMessage({ type: 'error', text: err.response?.data?.error?.message || err.message || 'Error fetching settings' })
         } finally {
             setLoading(false)
         }

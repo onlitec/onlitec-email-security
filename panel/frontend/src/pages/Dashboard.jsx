@@ -98,19 +98,75 @@ export default function Dashboard() {
             {/* Row 1: Registration/Admin Metrics */}
             <h3 className="text-lg font-medium text-gray-900 mb-2">Cadastros</h3>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                <StatsCard title={t('dashboard.totalDomains')} value={stats?.totalDomains || 0} subtitle={t('dashboard.configured')} color="blue" iconPath={ICONS.domains} />
-                <StatsCard title={t('dashboard.totalTenants', 'Total de Clientes')} value={stats?.totalTenants || 0} subtitle={t('dashboard.total')} color="green" iconPath={ICONS.tenants} />
-                <StatsCard title={t('dashboard.activeTenants')} value={stats?.activeTenants || 0} subtitle={t('dashboard.active', 'Ativos')} color="green" iconPath={ICONS.tenants} />
-                <StatsCard title={t('dashboard.totalUsers')} value={stats?.totalUsers || 0} subtitle={t('dashboard.emailAccounts')} color="green" iconPath={ICONS.users} />
+                <StatsCard
+                    title={t('dashboard.totalDomains')}
+                    value={stats?.totalDomains || 0}
+                    subtitle={t('dashboard.configured')}
+                    color="blue"
+                    iconPath={ICONS.domains}
+                    tooltip="Número total de domínios de email configurados no sistema para receber e enviar mensagens."
+                />
+                <StatsCard
+                    title={t('dashboard.totalTenants', 'Total de Clientes')}
+                    value={stats?.totalTenants || 0}
+                    subtitle={t('dashboard.total')}
+                    color="green"
+                    iconPath={ICONS.tenants}
+                    tooltip="Total de organizações/empresas cadastradas na plataforma multi-tenant."
+                />
+                <StatsCard
+                    title={t('dashboard.activeTenants')}
+                    value={stats?.activeTenants || 0}
+                    subtitle={t('dashboard.active', 'Ativos')}
+                    color="green"
+                    iconPath={ICONS.tenants}
+                    tooltip="Clientes com status ativo que podem enviar e receber emails normalmente."
+                />
+                <StatsCard
+                    title={t('dashboard.totalUsers')}
+                    value={stats?.totalUsers || 0}
+                    subtitle={t('dashboard.emailAccounts')}
+                    color="green"
+                    iconPath={ICONS.users}
+                    tooltip="Total de contas de email (caixas de correio) criadas em todos os domínios."
+                />
             </div>
 
             {/* Row 2: Email Metrics */}
             <h3 className="text-lg font-medium text-gray-900 mb-2 mt-6">Métricas de Email</h3>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                <StatsCard title={t('dashboard.emailsToday')} value={stats?.emailsToday || 0} subtitle={t('dashboard.last24h')} color="blue" iconPath={ICONS.email} />
-                <StatsCard title={t('dashboard.spamBlocked')} value={stats?.spamBlocked || 0} subtitle={t('dashboard.today')} color="red" iconPath={ICONS.spam} />
-                <StatsCard title={t('dashboard.virusDetected')} value={stats?.virusDetected || 0} subtitle={t('dashboard.thisWeek')} color="yellow" iconPath={ICONS.virus} />
-                <StatsCard title={t('dashboard.quarantined')} value={stats?.quarantinedEmails || 0} subtitle={t('dashboard.pendingReview')} color="yellow" iconPath={ICONS.quarantine} />
+                <StatsCard
+                    title={t('dashboard.emailsToday')}
+                    value={stats?.emailsToday || 0}
+                    subtitle={t('dashboard.last24h')}
+                    color="blue"
+                    iconPath={ICONS.email}
+                    tooltip="Quantidade de emails processados nas últimas 24 horas, incluindo recebidos e enviados."
+                />
+                <StatsCard
+                    title={t('dashboard.spamBlocked')}
+                    value={stats?.spamBlocked || 0}
+                    subtitle={t('dashboard.today')}
+                    color="red"
+                    iconPath={ICONS.spam}
+                    tooltip="Emails identificados como spam e bloqueados hoje. Protege os usuários de mensagens indesejadas."
+                />
+                <StatsCard
+                    title={t('dashboard.virusDetected')}
+                    value={stats?.virusDetected || 0}
+                    subtitle={t('dashboard.thisWeek')}
+                    color="yellow"
+                    iconPath={ICONS.virus}
+                    tooltip="Anexos maliciosos detectados pelo antivírus ClamAV esta semana. Ameaças neutralizadas."
+                />
+                <StatsCard
+                    title={t('dashboard.quarantined')}
+                    value={stats?.quarantinedEmails || 0}
+                    subtitle={t('dashboard.pendingReview')}
+                    color="yellow"
+                    iconPath={ICONS.quarantine}
+                    tooltip="Emails retidos em quarentena aguardando revisão manual. Podem ser liberados ou excluídos."
+                />
             </div>
 
             {/* AI Analysis Stats Cards */}
@@ -129,12 +185,48 @@ export default function Dashboard() {
                         </Link>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                        <AIStatCard title="Total (7d)" value={aiStats.total || 0} icon="📊" borderColor="border-blue-400" />
-                        <AIStatCard title="Phishing" value={aiStats.phishing || 0} icon="🎣" borderColor="border-red-400" />
-                        <AIStatCard title="Fraude" value={aiStats.fraud || 0} icon="⚠️" borderColor="border-orange-400" />
-                        <AIStatCard title="Spam" value={aiStats.spam || 0} icon="📧" borderColor="border-yellow-400" />
-                        <AIStatCard title="Legítimos" value={aiStats.legit || 0} icon="✅" borderColor="border-green-400" />
-                        <AIStatCard title="PDFs c/ JS" value={aiStats.pdf_with_js || 0} icon="📄" borderColor="border-purple-400" />
+                        <AIStatCard
+                            title="Total (7d)"
+                            value={aiStats.total || 0}
+                            icon="📊"
+                            borderColor="border-blue-400"
+                            tooltip="Total de emails analisados pela IA nos últimos 7 dias."
+                        />
+                        <AIStatCard
+                            title="Phishing"
+                            value={aiStats.phishing || 0}
+                            icon="🎣"
+                            borderColor="border-red-400"
+                            tooltip="Tentativas de phishing detectadas. Emails que tentam roubar dados pessoais ou credenciais."
+                        />
+                        <AIStatCard
+                            title="Fraude"
+                            value={aiStats.fraud || 0}
+                            icon="⚠️"
+                            borderColor="border-orange-400"
+                            tooltip="Emails fraudulentos identificados, incluindo golpes financeiros e engenharia social."
+                        />
+                        <AIStatCard
+                            title="Spam"
+                            value={aiStats.spam || 0}
+                            icon="📧"
+                            borderColor="border-yellow-400"
+                            tooltip="Emails de propaganda não solicitada ou conteúdo comercial indesejado."
+                        />
+                        <AIStatCard
+                            title="Legítimos"
+                            value={aiStats.legit || 0}
+                            icon="✅"
+                            borderColor="border-green-400"
+                            tooltip="Emails classificados como seguros e legítimos pela análise de IA."
+                        />
+                        <AIStatCard
+                            title="PDFs c/ JS"
+                            value={aiStats.pdf_with_js || 0}
+                            icon="📄"
+                            borderColor="border-purple-400"
+                            tooltip="PDFs com código JavaScript embutido detectados. Podem ser usados para ataques."
+                        />
                     </div>
                 </div>
             )}
@@ -282,43 +374,70 @@ export default function Dashboard() {
     )
 }
 
-function StatsCard({ title, value, subtitle, color, iconPath }) {
-    const colors = { blue: 'bg-blue-500', red: 'bg-red-500', yellow: 'bg-yellow-500', green: 'bg-green-500' }
+// Tooltip Component
+function Tooltip({ children, text }) {
+    const [show, setShow] = useState(false)
     return (
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-                <div className="flex items-center">
-                    <div className={`${colors[color]} rounded-md p-3`}>
-                        <svg className="h-6 w-6 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                            <path d={iconPath || "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"} />
-                        </svg>
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
-                            <dd className="text-2xl font-semibold text-gray-900">{(Number(value) || 0).toLocaleString()}</dd>
-                        </dl>
-                    </div>
+        <div className="relative inline-block w-full" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+            {children}
+            {show && text && (
+                <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg max-w-xs text-center whitespace-normal">
+                    {text}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                 </div>
-            </div>
-            <div className="bg-gray-50 px-5 py-3">
-                <div className="text-sm text-gray-500">{subtitle}</div>
-            </div>
+            )}
         </div>
     )
 }
 
-// Compact AI Stats Card Component
-function AIStatCard({ title, value, icon, borderColor }) {
+function StatsCard({ title, value, subtitle, color, iconPath, tooltip }) {
+    const colors = { blue: 'bg-blue-500', red: 'bg-red-500', yellow: 'bg-yellow-500', green: 'bg-green-500' }
     return (
-        <div className={`bg-white rounded-lg shadow-sm p-3 border-l-4 ${borderColor} hover:shadow-md transition-shadow`}>
-            <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                    <p className="text-xs text-gray-500 truncate">{title}</p>
-                    <p className="text-xl font-bold text-gray-900">{(Number(value) || 0).toLocaleString()}</p>
+        <Tooltip text={tooltip}>
+            <div className="bg-white overflow-hidden shadow rounded-lg cursor-help hover:shadow-md transition-shadow">
+                <div className="p-5">
+                    <div className="flex items-center">
+                        <div className={`${colors[color]} rounded-md p-3`}>
+                            <svg className="h-6 w-6 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                                <path d={iconPath || "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"} />
+                            </svg>
+                        </div>
+                        <div className="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt className="text-sm font-medium text-gray-500 truncate flex items-center gap-1">
+                                    {title}
+                                    {tooltip && <span className="text-gray-400 text-xs">ⓘ</span>}
+                                </dt>
+                                <dd className="text-2xl font-semibold text-gray-900">{(Number(value) || 0).toLocaleString()}</dd>
+                            </dl>
+                        </div>
+                    </div>
                 </div>
-                <span className="text-2xl ml-2 flex-shrink-0">{icon}</span>
+                <div className="bg-gray-50 px-5 py-3">
+                    <div className="text-sm text-gray-500">{subtitle}</div>
+                </div>
             </div>
-        </div>
+        </Tooltip>
     )
 }
+
+// Compact AI Stats Card Component with Tooltip
+function AIStatCard({ title, value, icon, borderColor, tooltip }) {
+    return (
+        <Tooltip text={tooltip}>
+            <div className={`bg-white rounded-lg shadow-sm p-3 border-l-4 ${borderColor} hover:shadow-md transition-shadow cursor-help`}>
+                <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                        <p className="text-xs text-gray-500 truncate flex items-center gap-1">
+                            {title}
+                            {tooltip && <span className="text-gray-400">ⓘ</span>}
+                        </p>
+                        <p className="text-xl font-bold text-gray-900">{(Number(value) || 0).toLocaleString()}</p>
+                    </div>
+                    <span className="text-2xl ml-2 flex-shrink-0">{icon}</span>
+                </div>
+            </div>
+        </Tooltip>
+    )
+}
+

@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(255),
-    role VARCHAR(50) DEFAULT 'admin' CHECK (role IN ('super-admin', 'admin', 'viewer')),
+    role VARCHAR(50) DEFAULT 'admin' CHECK (role IN ('superadmin', 'admin', 'viewer')),
     status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
     last_login TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -34,7 +34,7 @@ VALUES (
     'admin@onlitec.com',
     '$2a$10$vI8aWBnW3fID.ZQ4/zo1G.q1lRps.uUIr5pPWpR8.qr3x3r5b5YJa',
     'System Administrator',
-    'super-admin',
+    'superadmin',
     'active'
 ) ON CONFLICT (email) DO NOTHING;
 

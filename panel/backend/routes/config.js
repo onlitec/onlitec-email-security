@@ -36,10 +36,18 @@ router.get('/', (req, res) => {
                 try {
                     const fs = require('fs');
                     const path = require('path');
-                    // routes/config.js -> backend/routes -> backend -> panel -> root
-                    const versionPath = path.join(__dirname, '../../../VERSION');
+                    // routes/config.js -> backend/routes -> backend -> app -> VERSION
+                    // Mount point in Docker is /app/VERSION
+                    // WORKDIR is /app/backend
+                    // __dirname is /app/backend/routes
+                    const versionPath = path.join(__dirname, '../../VERSION');
                     if (fs.existsSync(versionPath)) {
                         return fs.readFileSync(versionPath, 'utf8').trim();
+                    }
+                    // Fallback for local dev where it might be in root
+                    const localPath = path.join(__dirname, '../../../VERSION');
+                    if (fs.existsSync(localPath)) {
+                        return fs.readFileSync(localPath, 'utf8').trim();
                     }
                 } catch (e) {
                     console.error('Failed to read VERSION file:', e);

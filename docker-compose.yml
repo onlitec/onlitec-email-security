@@ -228,6 +228,7 @@ services:
     volumes:
       - panel_logs:/var/log/panel
       - ./panel/uploads:/app/backend/public/uploads
+      - ./VERSION:/app/VERSION:ro
     networks:
       onlitec_email_network:
         ipv4_address: 172.30.0.7

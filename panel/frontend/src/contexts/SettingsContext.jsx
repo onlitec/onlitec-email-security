@@ -36,6 +36,16 @@ export function SettingsProvider({ children }) {
                 setSettings(prev => ({ ...prev, ...data.data }))
                 updateBranding(data.data)
             }
+
+            // Fetch general config (version, features) - Public
+            try {
+                const configRes = await api.get('/config')
+                if (configRes.data && configRes.data.data) {
+                    setSettings(prev => ({ ...prev, ...configRes.data.data }))
+                }
+            } catch (e) {
+                console.error('Failed to fetch general config', e)
+            }
         } catch (err) {
             console.error('Failed to fetch settings', err)
         } finally {

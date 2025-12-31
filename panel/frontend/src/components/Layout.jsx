@@ -91,7 +91,7 @@ export default function Layout({ children, setAuth }) {
                                 )}
                             </div>
                             <div className="flex-shrink-0 flex items-center ml-2 border-l pl-2 border-gray-300 h-6">
-                                <span className="text-xs text-gray-400 font-mono">v{pkg.version}</span>
+                                <span className="text-xs text-gray-400 font-mono">v{settings.version || pkg.version}</span>
                             </div>
                             <div className="hidden lg:ml-6 lg:flex lg:space-x-4">
                                 {navigation.map((item) => (

@@ -31,8 +31,21 @@ router.get('/', (req, res) => {
                 debugMode: config.isDevelopment,
             },
 
-            // Versioning
-            version: process.env.APP_VERSION || '1.0.0',
+            // Versioning - Read from root VERSION file
+            version: (() => {
+                try {
+                    const fs = require('fs');
+                    const path = require('path');
+                    // routes/config.js -> backend/routes -> backend -> panel -> root
+                    const versionPath = path.join(__dirname, '../../../VERSION');
+                    if (fs.existsSync(versionPath)) {
+                        return fs.readFileSync(versionPath, 'utf8').trim();
+                    }
+                } catch (e) {
+                    console.error('Failed to read VERSION file:', e);
+                }
+                return process.env.APP_VERSION || '1.0.0';
+            })(),
 
             // Mail domain (for display purposes)
             mailDomain: config.mail.domain,

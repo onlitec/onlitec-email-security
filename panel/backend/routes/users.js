@@ -13,12 +13,12 @@ router.get('/', usersController.list);
 router.get('/:id', usersController.get);
 
 // POST /api/users - Create user
-router.post('/', requireRole(['super-admin', 'admin']), usersController.create);
+router.post('/', requireRole(['superadmin', 'admin']), usersController.create);
 
 // PUT /api/users/:id - Update user
-router.put('/:id', requireRole(['super-admin', 'admin']), usersController.update);
+router.put('/:id', requireRole(['superadmin', 'admin']), usersController.update);
 
 // DELETE /api/users/:id - Delete user
-router.delete('/:id', requireRole(['super-admin', 'admin']), usersController.delete);
+router.delete('/:id', requireRole(['superadmin', 'admin']), usersController.delete);
 
 module.exports = router;

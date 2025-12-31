@@ -17,6 +17,7 @@ import Help from './pages/Help'
 import Services from './pages/Services'
 import AIVerdicts from './pages/AIVerdicts'
 import Manager from './pages/Manager'
+import AdminUsers from './pages/AdminUsers'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Layout from './components/Layout'
@@ -122,6 +123,7 @@ function App() {
                                     <Route path="/services" element={<Services />} />
                                     <Route path="/ai-verdicts" element={<AIVerdicts />} />
                                     <Route path="/manager" element={<Manager />} />
+                                    <Route path="/admin-users" element={<AdminUsers />} />
                                 </Routes>
                             </Layout>
                         ) : (

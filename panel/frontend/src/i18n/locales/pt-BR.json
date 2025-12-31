@@ -213,7 +213,11 @@
         "confirmPassword": "Confirmar Nova Senha",
         "passwordChanged": "Senha alterada com sucesso!",
         "passwordMismatch": "As senhas não coincidem",
-        "passwordTooShort": "A senha deve ter pelo menos 8 caracteres"
+        "passwordTooShort": "A senha deve ter pelo menos 8 caracteres",
+        "changeEmail": "Alterar Email",
+        "newEmail": "Novo Email",
+        "emailChanged": "Email alterado com sucesso!",
+        "passwordRequiredForEmail": "Informe sua senha para confirmar a alteração de email"
     },
     "help": {
         "title": "Guia de Configuração do Cliente",
@@ -318,5 +322,28 @@
         "newPassword": "Nova Senha",
         "confirmPassword": "Confirmar Senha",
         "resetSuccess": "Senha redefinida com sucesso!"
+    },
+    "adminUsers": {
+        "title": "Gerenciamento de Usuários",
+        "subtitle": "Gerenciar usuários administrativos da plataforma",
+        "addUser": "Novo Usuário",
+        "editUser": "Editar Usuário",
+        "fullName": "Nome Completo",
+        "email": "Email",
+        "password": "Senha",
+        "confirmPassword": "Confirmar Senha",
+        "role": "Função",
+        "status": "Status",
+        "lastLogin": "Último Login",
+        "resetPassword": "Resetar Senha",
+        "newPassword": "Nova Senha",
+        "passwordRequirement": "Mínimo de 8 caracteres",
+        "userCreated": "Usuário criado com sucesso",
+        "userUpdated": "Usuário atualizado com sucesso",
+        "userDeleted": "Usuário excluído com sucesso",
+        "passwordReset": "Senha resetada com sucesso",
+        "confirmDelete": "Tem certeza que deseja excluir este usuário?",
+        "passwordMismatch": "As senhas não coincidem",
+        "passwordTooShort": "A senha deve ter pelo menos 8 caracteres"
     }
 }

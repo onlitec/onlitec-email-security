@@ -6,8 +6,8 @@ const { authenticateToken, requireRole } = require('../middleware/auth.middlewar
 router.use(authenticateToken);
 
 router.get('/', aliasesController.list);
-router.post('/', requireRole(['super-admin', 'admin']), aliasesController.create);
-router.put('/:id', requireRole(['super-admin', 'admin']), aliasesController.update);
-router.delete('/:id', requireRole(['super-admin', 'admin']), aliasesController.delete);
+router.post('/', requireRole(['superadmin', 'admin']), aliasesController.create);
+router.put('/:id', requireRole(['superadmin', 'admin']), aliasesController.update);
+router.delete('/:id', requireRole(['superadmin', 'admin']), aliasesController.delete);
 
 module.exports = router;

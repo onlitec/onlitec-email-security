@@ -85,3 +85,53 @@ exports.changePassword = async (req, res) => {
         res.status(500).json({ success: false, error: { code: 'PASSWORD_ERROR', message: 'Failed to change password' } });
     }
 };
+
+// Update email
+exports.updateEmail = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { newEmail, currentPassword } = req.body;
+
+        if (!newEmail || !currentPassword) {
+            return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'New email and current password required' } });
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(newEmail)) {
+            return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid email format' } });
+        }
+
+        // Get current user
+        const user = await pool.query('SELECT email, password_hash FROM admin_users WHERE id = $1', [userId]);
+        if (user.rows.length === 0) {
+            return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } });
+        }
+
+        // Check if email is the same
+        if (user.rows[0].email === newEmail.toLowerCase()) {
+            return res.status(400).json({ success: false, error: { code: 'SAME_EMAIL', message: 'New email is the same as current email' } });
+        }
+
+        // Verify current password
+        const isValid = await bcrypt.compare(currentPassword, user.rows[0].password_hash);
+        if (!isValid) {
+            return res.status(401).json({ success: false, error: { code: 'INVALID_PASSWORD', message: 'Current password is incorrect' } });
+        }
+
+        // Check if email already exists
+        const existing = await pool.query('SELECT id FROM admin_users WHERE email = $1 AND id != $2 AND deleted_at IS NULL', [newEmail.toLowerCase(), userId]);
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ success: false, error: { code: 'DUPLICATE_EMAIL', message: 'Email already exists' } });
+        }
+
+        // Update email
+        await pool.query('UPDATE admin_users SET email = $1, updated_at = NOW() WHERE id = $2', [newEmail.toLowerCase(), userId]);
+
+        logger.info(`Email changed for user: ${req.user.email} -> ${newEmail}`);
+        res.json({ success: true, message: 'Email updated successfully' });
+    } catch (error) {
+        logger.error('Error updating email:', error);
+        res.status(500).json({ success: false, error: { code: 'EMAIL_ERROR', message: 'Failed to update email' } });
+    }
+};

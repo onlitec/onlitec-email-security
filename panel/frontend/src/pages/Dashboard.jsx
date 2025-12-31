@@ -6,13 +6,24 @@ import api from '../api'
 
 const COLORS = ['#3B82F6', '#EF4444', '#F59E0B', '#10B981']
 
+const ICONS = {
+    users: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
+    domains: "M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9 9m9-9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9",
+    tenants: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
+    email: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
+    spam: "M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636",
+    virus: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
+    quarantine: "M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+}
+
 export default function Dashboard() {
     const { t } = useTranslation()
     const [stats, setStats] = useState(null)
     const [servicesStatus, setServicesStatus] = useState(null)
+    const [aiStats, setAiStats] = useState(null)
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => { fetchStats(); fetchServicesStatus() }, [])
+    useEffect(() => { fetchStats(); fetchServicesStatus(); fetchAiStats() }, [])
 
     const fetchStats = async () => {
         try {
@@ -35,6 +46,17 @@ export default function Dashboard() {
             }
         } catch (error) {
             console.error('Failed to fetch services status:', error)
+        }
+    }
+
+    const fetchAiStats = async () => {
+        try {
+            const response = await api.get('/ai/verdicts/stats')
+            if (response.data.success) {
+                setAiStats(response.data.data.summary)
+            }
+        } catch (error) {
+            console.error('Failed to fetch AI stats:', error)
         }
     }
 
@@ -71,19 +93,51 @@ export default function Dashboard() {
                 <p className="mt-1 text-sm text-gray-600">{t('dashboard.subtitle')}</p>
             </div>
 
-            {/* Stats Cards */}
+            {/* Stats Cards - Reorganized Layout */}
+
+            {/* Row 1: Registration/Admin Metrics */}
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Cadastros</h3>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                <StatsCard title={t('dashboard.emailsToday')} value={stats?.emailsToday || 0} subtitle={t('dashboard.last24h')} color="blue" />
-                <StatsCard title={t('dashboard.spamBlocked')} value={stats?.spamBlocked || 0} subtitle={t('dashboard.today')} color="red" />
-                <StatsCard title={t('dashboard.virusDetected')} value={stats?.virusDetected || 0} subtitle={t('dashboard.thisWeek')} color="yellow" />
-                <StatsCard title={t('dashboard.activeTenants')} value={stats?.activeTenants || 0} subtitle={t('dashboard.total')} color="green" />
+                <StatsCard title={t('dashboard.totalDomains')} value={stats?.totalDomains || 0} subtitle={t('dashboard.configured')} color="blue" iconPath={ICONS.domains} />
+                <StatsCard title={t('dashboard.totalTenants', 'Total de Clientes')} value={stats?.totalTenants || 0} subtitle={t('dashboard.total')} color="green" iconPath={ICONS.tenants} />
+                <StatsCard title={t('dashboard.activeTenants')} value={stats?.activeTenants || 0} subtitle={t('dashboard.active', 'Ativos')} color="green" iconPath={ICONS.tenants} />
+                <StatsCard title={t('dashboard.totalUsers')} value={stats?.totalUsers || 0} subtitle={t('dashboard.emailAccounts')} color="green" iconPath={ICONS.users} />
             </div>
 
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-                <StatsCard title={t('dashboard.totalDomains')} value={stats?.totalDomains || 0} subtitle={t('dashboard.configured')} color="blue" />
-                <StatsCard title={t('dashboard.totalUsers')} value={stats?.totalUsers || 0} subtitle={t('dashboard.emailAccounts')} color="green" />
-                <StatsCard title={t('dashboard.quarantined')} value={stats?.quarantinedEmails || 0} subtitle={t('dashboard.pendingReview')} color="yellow" />
+            {/* Row 2: Email Metrics */}
+            <h3 className="text-lg font-medium text-gray-900 mb-2 mt-6">Métricas de Email</h3>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <StatsCard title={t('dashboard.emailsToday')} value={stats?.emailsToday || 0} subtitle={t('dashboard.last24h')} color="blue" iconPath={ICONS.email} />
+                <StatsCard title={t('dashboard.spamBlocked')} value={stats?.spamBlocked || 0} subtitle={t('dashboard.today')} color="red" iconPath={ICONS.spam} />
+                <StatsCard title={t('dashboard.virusDetected')} value={stats?.virusDetected || 0} subtitle={t('dashboard.thisWeek')} color="yellow" iconPath={ICONS.virus} />
+                <StatsCard title={t('dashboard.quarantined')} value={stats?.quarantinedEmails || 0} subtitle={t('dashboard.pendingReview')} color="yellow" iconPath={ICONS.quarantine} />
             </div>
+
+            {/* AI Analysis Stats Cards */}
+            {aiStats && (
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-100 mt-6">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <span>🧠</span>
+                            <span>Análise de IA</span>
+                        </h3>
+                        <Link
+                            to="/ai-verdicts"
+                            className="text-sm text-purple-600 hover:text-purple-800 font-medium"
+                        >
+                            Ver detalhes →
+                        </Link>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                        <AIStatCard title="Total (7d)" value={aiStats.total || 0} icon="📊" borderColor="border-blue-400" />
+                        <AIStatCard title="Phishing" value={aiStats.phishing || 0} icon="🎣" borderColor="border-red-400" />
+                        <AIStatCard title="Fraude" value={aiStats.fraud || 0} icon="⚠️" borderColor="border-orange-400" />
+                        <AIStatCard title="Spam" value={aiStats.spam || 0} icon="📧" borderColor="border-yellow-400" />
+                        <AIStatCard title="Legítimos" value={aiStats.legit || 0} icon="✅" borderColor="border-green-400" />
+                        <AIStatCard title="PDFs c/ JS" value={aiStats.pdf_with_js || 0} icon="📄" borderColor="border-purple-400" />
+                    </div>
+                </div>
+            )}
 
             {/* Charts */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -196,8 +250,8 @@ export default function Dashboard() {
                             <div
                                 key={service.name}
                                 className={`flex items-center space-x-2 px-3 py-2 rounded-full ${service.status === 'online'
-                                        ? 'bg-green-100 text-green-800'
-                                        : 'bg-red-100 text-red-800'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-red-100 text-red-800'
                                     }`}
                             >
                                 <span>{service.status === 'online' ? '✓' : '✗'}</span>
@@ -207,8 +261,8 @@ export default function Dashboard() {
                     </div>
                     {servicesStatus.overall && (
                         <p className={`mt-3 text-sm ${servicesStatus.overall === 'healthy'
-                                ? 'text-green-600'
-                                : 'text-yellow-600'
+                            ? 'text-green-600'
+                            : 'text-yellow-600'
                             }`}>
                             {servicesStatus.overall === 'healthy'
                                 ? t('services.allServicesOnline', 'Todos os serviços estão online')
@@ -228,7 +282,7 @@ export default function Dashboard() {
     )
 }
 
-function StatsCard({ title, value, subtitle, color }) {
+function StatsCard({ title, value, subtitle, color, iconPath }) {
     const colors = { blue: 'bg-blue-500', red: 'bg-red-500', yellow: 'bg-yellow-500', green: 'bg-green-500' }
     return (
         <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -236,7 +290,7 @@ function StatsCard({ title, value, subtitle, color }) {
                 <div className="flex items-center">
                     <div className={`${colors[color]} rounded-md p-3`}>
                         <svg className="h-6 w-6 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                            <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            <path d={iconPath || "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"} />
                         </svg>
                     </div>
                     <div className="ml-5 w-0 flex-1">
@@ -249,6 +303,21 @@ function StatsCard({ title, value, subtitle, color }) {
             </div>
             <div className="bg-gray-50 px-5 py-3">
                 <div className="text-sm text-gray-500">{subtitle}</div>
+            </div>
+        </div>
+    )
+}
+
+// Compact AI Stats Card Component
+function AIStatCard({ title, value, icon, borderColor }) {
+    return (
+        <div className={`bg-white rounded-lg shadow-sm p-3 border-l-4 ${borderColor} hover:shadow-md transition-shadow`}>
+            <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                    <p className="text-xs text-gray-500 truncate">{title}</p>
+                    <p className="text-xl font-bold text-gray-900">{(Number(value) || 0).toLocaleString()}</p>
+                </div>
+                <span className="text-2xl ml-2 flex-shrink-0">{icon}</span>
             </div>
         </div>
     )

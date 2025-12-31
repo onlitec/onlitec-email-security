@@ -4,7 +4,7 @@ const rolesController = require('../controllers/roles.controller');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 
 router.use(authenticate);
-router.use(authorize('admin', 'super-admin')); // Only admins can manage roles
+router.use(authorize('admin', 'superadmin')); // Only admins can manage roles
 
 router.get('/', rolesController.getRoles);
 router.post('/', rolesController.createRole);

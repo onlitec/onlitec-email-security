@@ -8,5 +8,6 @@ router.use(authenticateToken);
 router.get('/', profileController.getProfile);
 router.put('/', profileController.updateProfile);
 router.post('/password', profileController.changePassword);
+router.put('/email', profileController.updateEmail);
 
 module.exports = router;

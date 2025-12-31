@@ -48,6 +48,13 @@ exports.getStats = async (req, res) => {
         `);
         stats.activeTenants = parseInt(activeTenants.rows[0]?.total || 0);
 
+        // Total tenants
+        const totalTenants = await pool.query(`
+            SELECT COUNT(*) as total
+            FROM tenants
+        `);
+        stats.totalTenants = parseInt(totalTenants.rows[0]?.total || 0);
+
         // Total domains
         const totalDomains = await pool.query(`
             SELECT COUNT(*) as total

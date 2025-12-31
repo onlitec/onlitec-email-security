@@ -9,9 +9,9 @@ router.use(authenticateToken);
 router.get('/', blacklistController.list);
 
 // POST /api/blacklist - Add entry
-router.post('/', requireRole(['super-admin', 'admin']), blacklistController.create);
+router.post('/', requireRole(['superadmin', 'admin']), blacklistController.create);
 
 // DELETE /api/blacklist/:id - Remove entry
-router.delete('/:id', requireRole(['super-admin', 'admin']), blacklistController.delete);
+router.delete('/:id', requireRole(['superadmin', 'admin']), blacklistController.delete);
 
 module.exports = router;

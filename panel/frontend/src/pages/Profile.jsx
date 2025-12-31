@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '../api'
+import AdminUsers from './AdminUsers'
 
 export default function Profile() {
     const { t } = useTranslation()
@@ -15,6 +16,8 @@ export default function Profile() {
     const [showRoleModal, setShowRoleModal] = useState(false)
     const [editingRole, setEditingRole] = useState(null)
     const [roleForm, setRoleForm] = useState({ name: '', permissions: {} })
+    const [showEmailModal, setShowEmailModal] = useState(false)
+    const [emailForm, setEmailForm] = useState({ newEmail: '', currentPassword: '' })
 
     useEffect(() => {
         fetchProfile()
@@ -65,6 +68,22 @@ export default function Profile() {
             setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
         } catch (err) {
             setError(err.response?.data?.error?.message || 'Failed to change password')
+        }
+    }
+
+    const handleEmailChange = async (e) => {
+        e.preventDefault()
+        setError('')
+        setSuccess('')
+
+        try {
+            await api.put('/profile/email', emailForm)
+            setSuccess(t('profile.emailChanged', 'Email updated successfully'))
+            setShowEmailModal(false)
+            setEmailForm({ newEmail: '', currentPassword: '' })
+            fetchProfile()
+        } catch (err) {
+            setError(err.response?.data?.error?.message || 'Failed to change email')
         }
     }
 
@@ -131,8 +150,13 @@ export default function Profile() {
                         <button onClick={() => setActiveTab('account')} className={`${activeTab === 'account' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'} w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}>
                             {t('profile.accountInfo')}
                         </button>
+                        {(profile?.role === 'admin' || profile?.role === 'superadmin') && (
+                            <button onClick={() => setActiveTab('users')} className={`${activeTab === 'users' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'} w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm`}>
+                                {t('adminUsers.title', 'Users')}
+                            </button>
+                        )}
                         {profile?.role === 'admin' && (
-                            <button onClick={() => setActiveTab('roles')} className={`${activeTab === 'roles' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'} w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}>
+                            <button onClick={() => setActiveTab('roles')} className={`${activeTab === 'roles' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'} w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm`}>
                                 {t('roles.title')}
                             </button>
                         )}
@@ -147,7 +171,12 @@ export default function Profile() {
                                 <div className="space-y-3">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-500">{t('profile.email')}</label>
-                                        <div className="mt-1 text-gray-900">{profile?.email}</div>
+                                        <div className="mt-1 flex items-center gap-3">
+                                            <span className="text-gray-900">{profile?.email}</span>
+                                            <button onClick={() => setShowEmailModal(true)} className="text-sm text-blue-600 hover:text-blue-800">
+                                                {t('profile.changeEmail', 'Change')}
+                                            </button>
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-500">{t('profile.role')}</label>
@@ -191,6 +220,10 @@ export default function Profile() {
                                 </form>
                             </div>
                         </div>
+                    )}
+
+                    {activeTab === 'users' && (
+                        <AdminUsers />
                     )}
 
                     {activeTab === 'roles' && (
@@ -264,6 +297,38 @@ export default function Profile() {
                             <div className="flex justify-end space-x-3 pt-4">
                                 <button type="button" onClick={() => setShowRoleModal(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">{t('common.cancel')}</button>
                                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{t('common.save')}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showEmailModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        <h3 className="text-lg font-medium mb-4">{t('profile.changeEmail', 'Change Email')}</h3>
+                        {error && <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4">{error}</div>}
+                        <form onSubmit={handleEmailChange} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">{t('profile.newEmail', 'New Email')}</label>
+                                <input type="email" value={emailForm.newEmail}
+                                    onChange={(e) => setEmailForm({ ...emailForm, newEmail: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">{t('profile.currentPassword')}</label>
+                                <input type="password" value={emailForm.currentPassword}
+                                    onChange={(e) => setEmailForm({ ...emailForm, currentPassword: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required />
+                                <p className="mt-1 text-sm text-gray-500">{t('profile.passwordRequiredForEmail', 'Password required to confirm email change')}</p>
+                            </div>
+                            <div className="flex justify-end space-x-3 pt-4">
+                                <button type="button" onClick={() => { setShowEmailModal(false); setError(''); }} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
+                                    {t('common.cancel')}
+                                </button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                    {t('profile.changeEmail', 'Change Email')}
+                                </button>
                             </div>
                         </form>
                     </div>

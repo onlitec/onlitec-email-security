@@ -10,7 +10,9 @@ export default function Layout({ children, setAuth }) {
     const { settings } = useSettings()
     const user = JSON.parse(localStorage.getItem('user') || '{}')
     const [settingsOpen, setSettingsOpen] = useState(false)
+    const [profileOpen, setProfileOpen] = useState(false)
     const settingsRef = useRef(null)
+    const profileRef = useRef(null)
 
     const handleLogout = () => {
         localStorage.removeItem('token')
@@ -25,11 +27,14 @@ export default function Layout({ children, setAuth }) {
         i18n.changeLanguage(lng)
     }
 
-    // Close dropdown when clicking outside
+    // Close dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (settingsRef.current && !settingsRef.current.contains(event.target)) {
                 setSettingsOpen(false)
+            }
+            if (profileRef.current && !profileRef.current.contains(event.target)) {
+                setProfileOpen(false)
             }
         }
         document.addEventListener('mousedown', handleClickOutside)
@@ -38,26 +43,24 @@ export default function Layout({ children, setAuth }) {
 
     // Main navigation items (without settings-related items)
     const navigation = [
-        { name: t('nav.dashboard'), href: '/', icon: '📊' },
-        { name: t('nav.tenants'), href: '/tenants', icon: '🏢' },
-        { name: t('nav.domains'), href: '/domains', icon: '🌐' },
-        { name: t('nav.users'), href: '/users', icon: '👥' },
-        { name: t('nav.aliases'), href: '/aliases', icon: '📧' },
-        { name: t('nav.policies'), href: '/policies', icon: '📜' },
-        { name: t('nav.quarantine'), href: '/quarantine', icon: '🔒' },
-        { name: t('nav.quarantine'), href: '/quarantine', icon: '🔒' },
-        { name: t('nav.aiVerdicts', 'IA'), href: '/ai-verdicts', icon: '🧠' }
+        { name: t('nav.dashboard'), href: '/' },
+        { name: t('nav.tenants'), href: '/tenants' },
+        { name: t('nav.domains'), href: '/domains' },
+        { name: t('nav.users'), href: '/users' },
+        { name: t('nav.aliases'), href: '/aliases' },
+        { name: t('nav.policies'), href: '/policies' },
+        { name: t('nav.quarantine'), href: '/quarantine' },
+        { name: t('nav.aiVerdicts', 'IA'), href: '/ai-verdicts' }
     ]
 
     // Settings dropdown items
     const settingsItems = [
-        { name: t('nav.settings', 'Configurações'), href: '/settings', icon: '⚙️' },
-        { name: t('nav.manager', 'Gerenciamento'), href: '/manager', icon: '🔧' },
-        { name: t('nav.services', 'Serviços'), href: '/services', icon: '⚡' },
-        { name: t('nav.logs', 'Logs'), href: '/logs', icon: '📝' },
-        { name: t('nav.audit', 'Auditoria'), href: '/audit', icon: '📋' },
-        { name: t('nav.profile', 'Meu Perfil'), href: '/profile', icon: '👤' },
-        { name: t('nav.help'), href: '/help', icon: '❓' },
+        { name: t('nav.settings', 'Configurações'), href: '/settings' },
+        { name: t('nav.manager', 'Gerenciamento'), href: '/manager' },
+        { name: t('nav.services', 'Serviços'), href: '/services' },
+        { name: t('nav.logs', 'Logs'), href: '/logs' },
+        { name: t('nav.audit', 'Auditoria'), href: '/audit' },
+        { name: t('nav.help'), href: '/help' },
     ]
 
     const isActive = (href) => {
@@ -96,7 +99,6 @@ export default function Layout({ children, setAuth }) {
                                             : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                             }`}
                                     >
-                                        <span className="mr-1">{item.icon}</span>
                                         {item.name}
                                     </Link>
                                 ))}
@@ -110,7 +112,6 @@ export default function Layout({ children, setAuth }) {
                                             : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                             }`}
                                     >
-                                        <span className="mr-1">🛡️</span>
                                         {t('nav.admin', 'Admin')}
                                         <svg className={`ml-1 h-4 w-4 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -130,7 +131,6 @@ export default function Layout({ children, setAuth }) {
                                                             : 'text-gray-700 hover:bg-gray-100'
                                                             }`}
                                                     >
-                                                        <span className="mr-3 text-lg">{item.icon}</span>
                                                         {item.name}
                                                     </Link>
                                                 ))}
@@ -138,7 +138,7 @@ export default function Layout({ children, setAuth }) {
                                                 {/* Language Selector in dropdown */}
                                                 <div className="border-t border-gray-100 mt-1 pt-1">
                                                     <div className="px-4 py-2">
-                                                        <p className="text-xs text-gray-500 mb-2">🌍 {t('nav.language', 'Idioma')}</p>
+                                                        <p className="text-xs text-gray-500 mb-2">{t('nav.language', 'Idioma')}</p>
                                                         <div className="flex space-x-2">
                                                             <button
                                                                 onClick={() => changeLanguage('pt-BR')}
@@ -168,13 +168,48 @@ export default function Layout({ children, setAuth }) {
                             </div>
                         </div>
                         <div className="flex items-center space-x-4 ml-auto pl-4 flex-shrink-0">
-                            <button
-                                onClick={handleLogout}
-                                className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 flex items-center space-x-1"
-                            >
-                                <span>🚪</span>
-                                <span>{t('nav.logout')}</span>
-                            </button>
+                            {/* Profile Dropdown */}
+                            <div className="relative" ref={profileRef}>
+                                <button
+                                    onClick={() => setProfileOpen(!profileOpen)}
+                                    className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none"
+                                >
+                                    <div className="bg-gray-200 rounded-full p-2">
+                                        <svg className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    </div>
+                                    <span className="hidden md:block text-sm font-medium">{user.username || user.email || 'Usuário'}</span>
+                                    <svg className={`h-4 w-4 transition-transform ${profileOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+
+                                {profileOpen && (
+                                    <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                                        <div className="py-1">
+                                            <div className="px-4 py-2 border-b border-gray-100">
+                                                <p className="text-sm font-medium text-gray-900 truncate">{user.email || 'user@example.com'}</p>
+                                            </div>
+                                            <Link
+                                                to="/profile"
+                                                onClick={() => setProfileOpen(false)}
+                                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            >
+                                                <span className="mr-3">👤</span>
+                                                {t('nav.profile', 'Meu Perfil')}
+                                            </Link>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                            >
+                                                <span className="mr-3">🚪</span>
+                                                {t('nav.logout')}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

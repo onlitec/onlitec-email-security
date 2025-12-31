@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import api from '../api'
 
 const COLORS = ['#3B82F6', '#EF4444', '#F59E0B', '#10B981']
@@ -241,7 +241,7 @@ export default function Dashboard() {
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="date" />
                                 <YAxis />
-                                <Tooltip />
+                                <ChartTooltip />
                                 <Legend />
                                 <Line type="monotone" dataKey="received" stroke="#3B82F6" strokeWidth={2} name={t('dashboard.received')} />
                                 <Line type="monotone" dataKey="delivered" stroke="#10B981" strokeWidth={2} name={t('dashboard.delivered')} />
@@ -260,7 +260,7 @@ export default function Dashboard() {
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="date" />
                                 <YAxis />
-                                <Tooltip />
+                                <ChartTooltip />
                                 <Legend />
                                 <Bar dataKey="spam" fill="#EF4444" name={t('dashboard.spam')} />
                                 <Bar dataKey="virus" fill="#F59E0B" name={t('dashboard.virus')} />
@@ -281,7 +281,7 @@ export default function Dashboard() {
                                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                                     {pieData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
-                                <Tooltip />
+                                <ChartTooltip />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>

@@ -150,12 +150,12 @@ export default function Profile() {
                         <button onClick={() => setActiveTab('account')} className={`${activeTab === 'account' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'} w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}>
                             {t('profile.accountInfo')}
                         </button>
-                        {(profile?.role === 'admin' || profile?.role === 'superadmin') && (
+                        {(profile?.role === 'admin' || profile?.role === 'superadmin' || profile?.role === 'super-admin') && (
                             <button onClick={() => setActiveTab('users')} className={`${activeTab === 'users' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'} w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm`}>
                                 {t('adminUsers.title', 'Users')}
                             </button>
                         )}
-                        {profile?.role === 'admin' && (
+                        {(profile?.role === 'admin' || profile?.role === 'superadmin' || profile?.role === 'super-admin') && (
                             <button onClick={() => setActiveTab('roles')} className={`${activeTab === 'roles' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'} w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm`}>
                                 {t('roles.title')}
                             </button>

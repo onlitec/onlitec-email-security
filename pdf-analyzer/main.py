@@ -171,6 +171,43 @@ def analyze_pdf_content(pdf_bytes: bytes) -> dict:
             result["reasons"].append("Contains URI actions")
             result["risk_score"] += 2.0
         
+        # Financial & Fraud Detection
+        text_lower = result["text"].lower()
+        
+        # 1. Billing Terms
+        billing_terms = ['boleto', 'fatura', 'vencimento', 'pagamento', 'débito', 'cobrança']
+        found_terms = [term for term in billing_terms if term in text_lower]
+        if found_terms:
+            unique_terms = list(set(found_terms))
+            result["risk_score"] += 1.0 * len(unique_terms)
+            result["reasons"].append(f"Contains billing terms: {', '.join(unique_terms[:3])}")
+            
+        # 2. QR Code / PIX Context
+        # Detecting actual QR code requires image processing (opencv/pyzbar), 
+        # but text context is a strong indicator in emails.
+        if 'qr code' in text_lower or 'qrcode' in text_lower or 'escaneie' in text_lower:
+             result["risk_score"] += 2.0
+             result["reasons"].append("Mentions QR Code scanning (potential PIX fraud)")
+             
+        # 3. PIX Key Detection (Regex)
+        # Random key: 8-4-4-4-12 hexish
+        pix_random_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+        # CPF/CNPJ (loose check to avoid high FPs, usually combined with other terms)
+        cpf_pattern = r'\b\d{3}\.\d{3}\.\d{3}-\d{2}\b'
+        cnpj_pattern = r'\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b'
+        
+        has_pix = False
+        if 'pix' in text_lower or 'chave' in text_lower:
+            if re.search(pix_random_pattern, text_lower):
+                has_pix = True
+                result["risk_score"] += 4.0
+                result["reasons"].append("Contains PIX Random Key")
+            elif re.search(cpf_pattern, result["text"]) or re.search(cnpj_pattern, result["text"]):
+                 # Only flag if "PIX" is mentioned nearby, otherwise just a CPF in a PDF is normal
+                 has_pix = True
+                 result["risk_score"] += 2.0
+                 result["reasons"].append("Contains PIX Key (CPF/CNPJ)")
+        
         doc.close()
         
     except Exception as e:

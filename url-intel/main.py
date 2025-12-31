@@ -8,6 +8,7 @@ import math
 import logging
 from typing import Optional
 from urllib.parse import urlparse, unquote
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -57,6 +58,7 @@ class AnalyzeResponse(BaseModel):
     """Response model for URL analysis"""
     url: str = Field(..., description="Original URL")
     final_url: Optional[str] = Field(None, description="Final URL after redirects")
+    domain_age_days: Optional[int] = Field(None, description="Domain age in days")
     risk: str = Field(..., description="Risk level: low, medium, high, critical")
     score: float = Field(..., ge=0.0, description="Risk score (0-15)")
     reasons: list[str] = Field(default=[], description="Risk indicators")
@@ -128,8 +130,64 @@ def calculate_entropy(s: str) -> float:
     return entropy
 
 
-def analyze_url_heuristic(url: str) -> dict:
-    """Analyze URL using heuristics (no external lookups)"""
+
+async def get_domain_age_days(domain: str) -> Optional[int]:
+    """
+    Get domain age in days using RDAP.
+    Returns None if age cannot be determined.
+    """
+    rdap_url = f"https://rdap.org/domain/{domain}"
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            response = await client.get(rdap_url)
+            if response.status_code == 200:
+                data = response.json()
+                events = data.get('events', [])
+                creation_date_str = None
+                
+                for event in events:
+                    if event.get('eventAction') == 'registration':
+                        creation_date_str = event.get('eventDate')
+                        break
+                
+                if not creation_date_str:
+                    # Try to find 'last changed' if registration not available, though less accurate
+                    for event in events:
+                         if event.get('eventAction') == 'last changed':
+                             creation_date_str = event.get('eventDate')
+                             break
+
+                if creation_date_str:
+                    # Handle format "2024-01-01T12:00:00Z"
+                    creation_date = datetime.fromisoformat(creation_date_str.replace('Z', '+00:00'))
+                    age = datetime.now(timezone.utc) - creation_date
+                    return max(0, age.days)
+    except Exception as e:
+        logger.warning(f"RDAP lookup failed for {domain}: {e}")
+    
+    return None
+
+def is_suspicious_homograph(domain: str) -> bool:
+    """
+    Check for IDN homograph attacks (mixed scripts).
+    """
+    try:
+        # If domain matches existing lookalikes regex, it's already caught.
+        # Here we check for mixed scripts (e.g. Cyrillic 'a' in Latin domain)
+        
+        # Convert to punycode
+        encoded = domain.encode('idna').decode('ascii')
+        
+        # If it starts with xn-- it's an IDN
+        if domain.startswith('xn--') or 'xn--' in domain:
+            return True # Treat all IDNs as suspicious for this context unless whitelisted
+            
+    except Exception:
+        pass
+    return False
+
+async def analyze_url_heuristic(url: str) -> dict:
+    """Analyze URL using heuristics AND external RDAP"""
     start = time.time()
     
     result = {
@@ -143,14 +201,16 @@ def analyze_url_heuristic(url: str) -> dict:
         "has_ip": False,
         "is_encoded": False,
         "is_shortened": False,
-        "redirect_count": 0
+        "redirect_count": 0,
+        "domain_age_days": None
     }
     
     try:
         parsed = urlparse(url)
         extracted = tldextract.extract(url)
         
-        result["domain"] = f"{extracted.domain}.{extracted.suffix}" if extracted.suffix else extracted.domain
+        domain_str = f"{extracted.domain}.{extracted.suffix}" if extracted.suffix else extracted.domain
+        result["domain"] = domain_str
         result["tld"] = extracted.suffix
         
         # Check for IP address
@@ -166,7 +226,7 @@ def analyze_url_heuristic(url: str) -> dict:
             result["reasons"].append(f"Suspicious TLD: .{extracted.suffix}")
         
         # Check URL shortener
-        full_domain = f"{extracted.domain}.{extracted.suffix}".lower()
+        full_domain = domain_str.lower()
         if full_domain in URL_SHORTENERS:
             result["is_shortened"] = True
             result["score"] += 2.0
@@ -225,16 +285,34 @@ def analyze_url_heuristic(url: str) -> dict:
             (r'faceb[0o]{2}k', 'Facebook lookalike'),
         ]
         
+        found_lookalike = False
         for pattern, description in lookalike_patterns:
             if re.search(pattern, extracted.domain.lower()):
                 result["score"] += 5.0
                 result["reasons"].append(f"Possible {description}")
+                found_lookalike = True
                 break
         
+        if not found_lookalike and is_suspicious_homograph(full_domain):
+             result["score"] += 4.0
+             result["reasons"].append("Suspicious IDN/Homograph (punycode)")
+
         # Check for double extension attacks
         if re.search(r'\.(pdf|doc|xls|exe|zip)\.[a-z]{2,4}$', parsed.path.lower()):
             result["score"] += 4.0
             result["reasons"].append("Double file extension detected")
+            
+        # Check Domain Age (Async)
+        if not result["has_ip"]:
+            age_days = await get_domain_age_days(full_domain)
+            result["domain_age_days"] = age_days
+            if age_days is not None:
+                if age_days < 30:
+                    result["score"] += 5.0
+                    result["reasons"].append(f"New domain (< 30 days): {age_days} days old")
+                elif age_days < 90:
+                    result["score"] += 2.0
+                    result["reasons"].append(f"Recent domain (< 90 days): {age_days} days old")
         
     except Exception as e:
         logger.error(f"URL analysis error: {e}")
@@ -301,7 +379,8 @@ async def analyze_url(request: AnalyzeRequest):
     """Analyze single URL for security risks"""
     try:
         with ANALYSIS_HISTOGRAM.time():
-            result = analyze_url_heuristic(request.url)
+            # Await the async heuristic analysis (now includes network call)
+            result = await analyze_url_heuristic(request.url)
             
             if request.follow_redirects:
                 final_url, redirect_count = await follow_url_redirects(request.url)
@@ -328,8 +407,9 @@ async def analyze_url(request: AnalyzeRequest):
 async def analyze_urls_batch(request: AnalyzeBatchRequest):
     """Analyze multiple URLs"""
     results = []
+    # Process sequentially for now to avoid rate limits
     for url in request.urls[:20]:  # Limit to 20 URLs
-        result = analyze_url_heuristic(url)
+        result = await analyze_url_heuristic(url)
         results.append(result)
     
     return {
@@ -355,3 +435,4 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
+

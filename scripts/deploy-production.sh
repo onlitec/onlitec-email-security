@@ -35,6 +35,11 @@ if [ -f "database/migrations/007_fix_domains_schema.sql" ]; then
     echo "    - Migração 007_fix_domains_schema.sql aplicada"
 fi
 
+if [ -f "database/migrations/008_fix_admin_roles.sql" ]; then
+    cat database/migrations/008_fix_admin_roles.sql | docker-compose exec -T onlitec_emailprotect_db psql -U emailprotect -d emailprotect
+    echo "    - Migração 008_fix_admin_roles.sql aplicada"
+fi
+
 # 5. Fix user permissions - Set admin users to superadmin
 echo ""
 echo "[5/5] Atualizando permissões de usuários admin..."

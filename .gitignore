@@ -100,3 +100,6 @@ panel/uploads/
 postfix/sasl_passwd
 postfix/sasl_passwd.db
 postfix/**/*.db
+
+# Postfix PostgreSQL configs (contain database credentials)
+postfix/pgsql/*.cf

@@ -120,8 +120,8 @@ EOF
     echo "--------------------------------------------"
     echo ""
     
-    # Enviar via container
-    docker exec -i onlitec_postfix sendmail -t < $EMAIL_TEMP
+    # Enviar via container (usando -f para definir envelope sender)
+    docker exec -i onlitec_postfix sendmail -f "$FROM" -t < $EMAIL_TEMP
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✓ Email enviado para a fila do Postfix!${NC}"

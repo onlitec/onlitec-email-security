@@ -54,24 +54,29 @@ git log --oneline HEAD..origin/main | while read line; do
     log "   - $line"
 done
 
-# 4. Pull das atualizações
-log "⬇️  Aplicando atualizações..."
-git pull origin main
+# 4. Descartar alterações locais (servidor de produção - nunca deve ter mudanças locais)
+log "🧹 Descartando alterações locais (produção deve refletir repositório remoto)..."
+git checkout . 2>&1 || true
+git clean -fd 2>&1 || true
 
-# 5. Reconstruir containers
+# 5. Forçar sincronização com repositório remoto
+log "⬇️  Aplicando atualizações..."
+git reset --hard origin/main
+
+# 6. Reconstruir containers
 log "🔨 Reconstruindo containers..."
 sudo docker compose build --no-cache 2>&1 | tee -a "$LOG_FILE"
 
-# 6. Reiniciar serviços (preservando volumes)
+# 7. Reiniciar serviços (preservando volumes)
 log "🔄 Reiniciando serviços..."
 sudo docker compose down
 sudo docker compose up -d 2>&1 | tee -a "$LOG_FILE"
 
-# 7. Aguardar containers ficarem healthy
+# 8. Aguardar containers ficarem healthy
 log "⏳ Aguardando containers ficarem saudáveis..."
 sleep 30
 
-# 8. Verificar status
+# 9. Verificar status
 log "🔍 Verificando status dos containers..."
 UNHEALTHY=$(sudo docker compose ps --format json | grep -c '"Health":"unhealthy"' || true)
 
@@ -82,11 +87,11 @@ else
     log "✅ Todos os containers estão saudáveis"
 fi
 
-# 9. Limpar imagens antigas (opcional)
+# 10. Limpar imagens antigas (opcional)
 log "🧹 Limpando imagens antigas não utilizadas..."
 sudo docker image prune -f 2>&1 | tee -a "$LOG_FILE"
 
-# 10. Finalização
+# 11. Finalização
 NEW_COMMIT=$(git rev-parse --short HEAD)
 log "=========================================="
 log "✅ DEPLOY CONCLUÍDO COM SUCESSO"

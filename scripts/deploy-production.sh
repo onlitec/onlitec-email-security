@@ -45,6 +45,11 @@ if [ -f "database/migrations/009_fix_transport_maps.sql" ]; then
     echo "    - Migração 009_fix_transport_maps.sql aplicada (Correção de entrega de email)"
 fi
 
+if [ -f "database/migrations/010_allow_deleted_status.sql" ]; then
+    cat database/migrations/010_allow_deleted_status.sql | docker-compose exec -T onlitec_emailprotect_db psql -U emailprotect -d emailprotect
+    echo "    - Migração 010_allow_deleted_status.sql aplicada (Correção de Soft Delete)"
+fi
+
 # Rebuild and restart Postfix to apply volume changes (SASL auth fix)
 echo ""
 echo "[EXTRA] Atualizando configuração do Postfix (Relay Auth Fix)..."

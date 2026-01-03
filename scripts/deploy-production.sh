@@ -40,6 +40,32 @@ if [ -f "database/migrations/008_fix_admin_roles.sql" ]; then
     echo "    - Migração 008_fix_admin_roles.sql aplicada"
 fi
 
+if [ -f "database/migrations/009_fix_transport_maps.sql" ]; then
+    cat database/migrations/009_fix_transport_maps.sql | docker-compose exec -T onlitec_emailprotect_db psql -U emailprotect -d emailprotect
+    echo "    - Migração 009_fix_transport_maps.sql aplicada (Correção de entrega de email)"
+fi
+
+# Rebuild and restart Postfix to apply volume changes (SASL auth fix)
+echo ""
+echo "[EXTRA] Atualizando configuração do Postfix (Relay Auth Fix)..."
+docker-compose build onlitec_postfix
+docker-compose rm -sf onlitec_postfix
+docker-compose up -d onlitec_postfix
+
+# Rebuild and restart Rspamd to apply timeout fix
+echo ""
+echo "[EXTRA] Atualizando configuração do Rspamd (Timeout Fix)..."
+docker-compose build onlitec_rspamd
+docker-compose rm -sf onlitec_rspamd
+docker-compose up -d onlitec_rspamd
+
+# Rebuild and restart ClamAV to apply Bytecode Fix (Memory/Crash fix)
+echo ""
+echo "[EXTRA] Atualizando configuração do ClamAV (Bug Fix)..."
+docker-compose build onlitec_clamav
+docker-compose rm -sf onlitec_clamav
+docker-compose up -d onlitec_clamav
+
 # 5. Fix user permissions - Set admin users to superadmin
 echo ""
 echo "[5/5] Atualizando permissões de usuários admin..."

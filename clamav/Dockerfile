@@ -11,6 +11,10 @@ RUN mkdir -p /var/log/clamav && chown -R clamav:clamav /var/log/clamav
 
 # Copy custom configuration
 COPY clamd.conf /etc/clamav/clamd.conf
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Expose port
 EXPOSE 3310

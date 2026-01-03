@@ -29,10 +29,23 @@ PATCH=$((PATCH + 1))
 NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
 
 # Update file
+# Update file
 echo "$NEW_VERSION" > "$VERSION_FILE"
+
+# Update package.json files (remove v prefix)
+NEW_VERSION_NO_V="${NEW_VERSION#v}"
+echo "Updating package.json files to $NEW_VERSION_NO_V..."
+
+if [ -f "panel/frontend/package.json" ]; then
+    sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION_NO_V\"/" panel/frontend/package.json
+fi
+
+if [ -f "panel/backend/package.json" ]; then
+    sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION_NO_V\"/" panel/backend/package.json
+fi
 
 # Output
 echo "Version bumped: $CURRENT_VERSION -> $NEW_VERSION"
 
-# STAGE the modified VERSION file so it is included in the CURRENT commit
-git add "$VERSION_FILE"
+# STAGE the modified files so they are included in the CURRENT commit
+git add "$VERSION_FILE" "panel/frontend/package.json" "panel/backend/package.json" 2>/dev/null || true

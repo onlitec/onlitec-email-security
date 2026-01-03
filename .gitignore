@@ -95,3 +95,8 @@ coverage/
 # Uploads
 panel/uploads/
 
+
+# Postfix generated maps and secrets
+postfix/sasl_passwd
+postfix/sasl_passwd.db
+postfix/**/*.db

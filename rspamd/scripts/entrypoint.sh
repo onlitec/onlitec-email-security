@@ -23,12 +23,20 @@ done
 echo "Redis is up!"
 
 # Wait for ClamAV
+# Wait for ClamAV (max 60 attempts = 120s)
 echo "Waiting for ClamAV..."
-until nc -z "$CLAMAV_HOST" "$CLAMAV_PORT" 2>/dev/null; do
-  echo "ClamAV is unavailable - sleeping"
+count=0
+until nc -z "$CLAMAV_HOST" "$CLAMAV_PORT" 2>/dev/null || [ $count -eq 60 ]; do
+  echo "ClamAV is unavailable - sleeping ($count/60)"
   sleep 2
+  count=$((count+1))
 done
-echo "ClamAV is up!"
+
+if [ $count -eq 60 ]; then
+    echo "⚠ Warning: ClamAV timed out - starting Rspamd without Antivirus confirmation..."
+else
+    echo "ClamAV is up!"
+fi
 
 # Wait for PostgreSQL  
 echo "Waiting for PostgreSQL..."

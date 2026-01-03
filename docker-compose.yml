@@ -94,12 +94,9 @@ services:
     container_name: onlitec_rspamd
     restart: unless-stopped
     depends_on:
-      onlitec_redis:
-        condition: service_healthy
-      onlitec_clamav:
-        condition: service_healthy
-      onlitec_emailprotect_db:
-        condition: service_healthy
+      - onlitec_redis
+      - onlitec_clamav
+      - onlitec_emailprotect_db
     environment:
       REDIS_HOST: onlitec_redis
       REDIS_PORT: 6379
@@ -114,6 +111,7 @@ services:
       - ./rspamd/local.d:/etc/rspamd/local.d
       - ./rspamd/override.d:/etc/rspamd/override.d
       - ./rspamd/scripts:/etc/rspamd/scripts
+      - ./rspamd/scripts/entrypoint.sh:/entrypoint.sh
       - panel_logs:/var/log/rspamd
     networks:
       onlitec_email_network:
@@ -136,10 +134,8 @@ services:
     restart: unless-stopped
     hostname: ${MAIL_HOSTNAME:-mail.onlitec.local}
     depends_on:
-      onlitec_rspamd:
-        condition: service_healthy
-      onlitec_emailprotect_db:
-        condition: service_healthy
+      - onlitec_rspamd
+      - onlitec_emailprotect_db
     environment:
       MAIL_HOSTNAME: ${MAIL_HOSTNAME:-mail.onlitec.local}
       MAIL_DOMAIN: ${MAIL_DOMAIN:-onlitec.local}
@@ -157,6 +153,8 @@ services:
       - ./postfix/main.cf:/etc/postfix/main.cf
       - ./postfix/master.cf:/etc/postfix/master.cf
       - ./postfix/pgsql:/etc/postfix/pgsql
+      - ./postfix/sasl_passwd:/etc/postfix/sasl_passwd:ro
+      - ./postfix/scripts/entrypoint.sh:/entrypoint.sh
       - ./certs:/etc/postfix/certs
       - panel_logs:/var/log/mail
     networks:
@@ -182,12 +180,9 @@ services:
     container_name: onlitec_emailprotect_panel
     restart: unless-stopped
     depends_on:
-      onlitec_emailprotect_db:
-        condition: service_healthy
-      onlitec_redis:
-        condition: service_healthy
-      onlitec_rspamd:
-        condition: service_healthy
+      - onlitec_emailprotect_db
+      - onlitec_redis
+      - onlitec_rspamd
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 9080

@@ -24,12 +24,20 @@ done
 echo "PostgreSQL is up!"
 
 # Wait for Rspamd
+# Wait for Rspamd (max 30 attempts)
 echo "Waiting for Rspamd..."
-until nc -z "$RSPAMD_HOST" 11333 2>/dev/null; do
-  echo "Rspamd is unavailable - sleeping"
+count=0
+until nc -z "$RSPAMD_HOST" 11333 2>/dev/null || [ $count -eq 30 ]; do
+  echo "Rspamd is unavailable - sleeping ($count/30)"
   sleep 2
+  count=$((count+1))
 done
-echo "Rspamd is up!"
+
+if [ $count -eq 30 ]; then
+    echo "⚠ Warning: Rspamd timed out - continuing anyway..."
+else
+    echo "Rspamd is up!"
+fi
 
 # Update PostgreSQL connection files with environment variables
 if [ -n "$POSTGRES_PASSWORD" ]; then
@@ -124,6 +132,24 @@ echo "Updating Postfix maps..."
 postmap /etc/postfix/pgsql/virtual_domains.cf 2>&1 || echo "⚠ Could not update virtual_domains map"
 postmap /etc/postfix/pgsql/virtual_mailboxes.cf 2>&1 || echo "⚠ Could not update virtual_mailboxes map"
 postmap /etc/postfix/pgsql/virtual_aliases.cf 2>&1 || echo "⚠ Could not update virtual_aliases map"
+
+# Create/update SASL password database for relay authentication
+if [ -f /etc/postfix/sasl_passwd ]; then
+    echo "Creating SASL password database..."
+    # Copy to a writable location if original is read-only
+    cp /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.tmp 2>/dev/null || true
+    if [ -f /etc/postfix/sasl_passwd.tmp ]; then
+        postmap hash:/etc/postfix/sasl_passwd.tmp
+        mv /etc/postfix/sasl_passwd.tmp.db /etc/postfix/sasl_passwd.db 2>/dev/null || true
+        rm -f /etc/postfix/sasl_passwd.tmp
+    else
+        postmap hash:/etc/postfix/sasl_passwd
+    fi
+    chmod 600 /etc/postfix/sasl_passwd.db 2>/dev/null || true
+    echo "✓ SASL password database created"
+else
+    echo "⚠ No sasl_passwd file found - relay authentication may not work"
+fi
 
 # Start rsyslog
 echo "Starting rsyslog..."

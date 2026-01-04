@@ -8,6 +8,9 @@ import logging
 from typing import Optional
 from config import get_settings
 from models import ClassificationLabel
+import math
+import re
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -65,6 +68,74 @@ class EmailClassifier:
             r'\bdiscount\b.*\b\d+%\b'
         ]
         
+        # Portuguese/Brazil specific patterns
+        self.pt_government_keywords = [
+            r'gov\.br', r'receita\s+federal', r't[iy]tulo\s+eleitoral',
+            r'cpf', r'cnpj', r'serasa', r'bacen', r'banco\s+central'
+        ]
+
+        self.pt_urgency_patterns = [
+            r'bloqueio\s+(imediato|de\s+cpf|de\s+chave\s+pix|de\s+conta)',
+            r'evite\s+a\s+suspens[ãa]o',
+            r'cpf\s+irregular',
+            r'com\s+restri[çc][ãa]o',
+            r'regularize\s+agora',
+            r'notifica[çc][ãa]o\s+extrajudicial',
+            r'a\s+qualquer\s+momento',
+            r'cancelamento\s+definitivo'
+        ]
+    
+    def _calculate_entropy(self, text: str) -> float:
+        """Calculate Shannon entropy of a string"""
+        if not text:
+            return 0.0
+        entropy = 0
+        for x in range(256):
+            p_x = float(text.count(chr(x))) / len(text)
+            if p_x > 0:
+                entropy += - p_x * math.log(p_x, 2)
+        return entropy
+
+    def _check_sender_anomalies(self, headers: dict) -> tuple[float, list[str]]:
+        """Check for anomalies in sender address like high digit count or simple alphanumeric patterns"""
+        score = 0.0
+        reasons = []
+        if not headers or not headers.get('from_address'):
+            return score, reasons
+
+        from_addr = headers.get('from_address', '').lower()
+        # Extract email part if format is "Name <email>"
+        email_match = re.search(r'<([^>]+)>', from_addr)
+        email = email_match.group(1) if email_match else from_addr
+        email = email.strip('<> ')
+
+        if '@' not in email:
+            return score, reasons
+
+        local_part, domain = email.split('@', 1)
+
+        # Check for excessive digits in local part (e.g., no-reply98234)
+        digit_count = sum(c.isdigit() for c in local_part)
+        if len(local_part) > 0:
+            digit_ratio = digit_count / len(local_part)
+            if digit_count > 4 or digit_ratio > 0.4:
+                score += 0.35
+                reasons.append(f"Sender local-part has high digit count ({digit_count})")
+        
+        # Check subdomains in domain part
+        domain_parts = domain.split('.')
+        if len(domain_parts) > 3: # e.g. sub.domain.com.br is 4 parts, suspicious if random
+             # Check entropy of the first subdomain
+             subdomain = domain_parts[0]
+             entropy = self._calculate_entropy(subdomain)
+             if len(subdomain) > 5 and entropy > 3.5:
+                 score += 0.3
+                 reasons.append(f"Suspicious high-entropy subdomain: {subdomain}")
+
+        return score, reasons
+        
+
+        
     def _normalize_text(self, text: str) -> str:
         """Normalize text for analysis"""
         if not text:
@@ -88,7 +159,7 @@ class EmailClassifier:
         score = 0.0
         reasons = []
         
-        suspicious_tlds = ['.xyz', '.top', '.click', '.link', '.pw', '.tk', '.ml', '.ga']
+        suspicious_tlds = ['.xyz', '.top', '.click', '.link', '.pw', '.tk', '.ml', '.ga', '.shop', '.site', '.online', '.store']
         
         for url in urls:
             url_lower = url.lower()
@@ -119,7 +190,35 @@ class EmailClassifier:
             if len(url) > 100:
                 score += 0.1
                 reasons.append("Unusually long URL")
-        
+            
+            # Advanced: Check for IP usage (v4)
+            # Regex captures http(s)://IP...
+            if re.search(r'https?://(?:[0-9]{1,3}\.){3}[0-9]{1,3}', url_lower):
+                 score += 0.5
+                 reasons.append("URL uses raw IP address")
+
+            # Advanced: Check subdomain entropy in URL
+            try:
+                parsed = urlparse(url)
+                hostname = parsed.hostname or ""
+                host_parts = hostname.split('.')
+                # If many subdomains, check the first one
+                if len(host_parts) > 2:
+                    # Ignore www
+                    target_sub = host_parts[0] if host_parts[0] != 'www' else (host_parts[1] if len(host_parts) > 3 else "")
+                    if target_sub:
+                        entropy = self._calculate_entropy(target_sub)
+                        if len(target_sub) > 7 and entropy > 3.8:
+                            score += 0.25
+                            reasons.append(f"High entropy/random subdomain in URL: {target_sub}")
+                
+                # Check for HTTP (non-secure) on strange domains
+                if parsed.scheme == 'http':
+                     score += 0.1
+                     reasons.append("Insecure HTTP protocol used")
+            except Exception:
+                pass # Fail silently on malformed URLs
+
         return min(score, 1.0), reasons
     
     def _check_header_mismatch(self, headers: Optional[dict]) -> tuple[float, list[str]]:
@@ -201,6 +300,27 @@ class EmailClassifier:
         header_score, header_reasons = self._check_header_mismatch(headers)
         phishing_score += header_score
         reasons.extend(header_reasons)
+        
+        # Check Sender Anomalies (Numeric patterns, entropy)
+        sender_score, sender_reasons = self._check_sender_anomalies(headers)
+        phishing_score += sender_score
+        reasons.extend(sender_reasons)
+
+        # Check PT patterns
+        pt_urgency_matches = self._check_patterns(full_text, self.pt_urgency_patterns)
+        if pt_urgency_matches:
+            phishing_score += 0.35
+            reasons.append(f"PT Urgency language detected ({len(pt_urgency_matches)} patterns)")
+
+        # Check Government impersonation
+        gov_matches = self._check_patterns(full_text, self.pt_government_keywords)
+        if gov_matches:
+             # Check if sender is NOT .gov.br
+             if headers and headers.get('from_address'):
+                 from_addr = headers['from_address'].lower()
+                 if 'gov.br' not in from_addr:
+                      phishing_score += 0.4
+                      reasons.append("Government keywords found but sender is not gov.br")
         
         # Check for PDF with external links (high risk)
         if pdf_text and urls:

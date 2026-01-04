@@ -1,31 +1,39 @@
-# AI Semantic Engine - Dockerfile (Node.js version)
-# Uses cached node:18-alpine image to avoid network issues
-FROM node:18-alpine
+# AI Semantic Engine - Dockerfile (Python Version)
+FROM python:3.11-slim
 
 LABEL maintainer="Onlitec <dev@onlitec.com>"
 LABEL description="AI Semantic Engine for Email Security"
 
 WORKDIR /app
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Install system dependencies
+# curl: for healthcheck
+# build-essential: for compiling some python packages if needed
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy package files
-COPY package*.json ./
+# Copy requirements first to leverage cache
+COPY requirements.txt .
 
-# Install dependencies
-RUN npm install --production
+# Install Python dependencies
+# Using --no-cache-dir to keep image small
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
 
-# Create non-root user
-RUN chown -R node:node /app
-USER node
+# Create non-root user for security
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
 
+# Expose port
 EXPOSE 8080
 
+# Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-CMD ["node", "server.js"]
+# Run application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

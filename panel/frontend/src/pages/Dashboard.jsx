@@ -157,7 +157,7 @@ export default function Dashboard() {
                     subtitle={t('dashboard.thisWeek')}
                     color="yellow"
                     iconPath={ICONS.virus}
-                    tooltip="Anexos maliciosos detectados pelo antivírus ClamAV esta semana. Ameaças neutralizadas."
+                    tooltip="Ameaças detectadas esta semana. Inclui vírus detectados pelo ClamAV e emails de spam/phishing com anexos suspeitos."
                 />
                 <StatsCard
                     title={t('dashboard.quarantined')}

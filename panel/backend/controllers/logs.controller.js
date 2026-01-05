@@ -162,21 +162,52 @@ exports.ingest = async (req, res) => {
             const is_spam = spam_score > 15 || log.action === 'reject';
             const tenant_id = log.tenant_id || 'c3f5a2bf-d447-4729-95f9-61215bdf5275'; // Fallback to ONLITEC
 
+            // Detect attachments from Rspamd data
+            // Rspamd provides: parts (array of MIME parts) or attachments field
+            let has_attachment = false;
+
+            // Check if Rspamd sent parts info (MIME parts)
+            if (log.parts && Array.isArray(log.parts)) {
+                has_attachment = log.parts.some(part =>
+                    part.filename ||
+                    (part.content_type && !part.content_type.startsWith('text/') && !part.content_type.startsWith('multipart/'))
+                );
+            }
+
+            // Alternative: Check explicit attachments field
+            if (!has_attachment && log.attachments && Array.isArray(log.attachments) && log.attachments.length > 0) {
+                has_attachment = true;
+            }
+
+            // Alternative: Check for ATTACHMENT symbol from Rspamd
+            const rawSymbols = log.symbols || [];
+            if (!has_attachment && rawSymbols) {
+                const symbolNames = Array.isArray(rawSymbols)
+                    ? rawSymbols.map(s => s.name || s)
+                    : Object.keys(rawSymbols);
+                has_attachment = symbolNames.some(name =>
+                    name === 'ATTACHMENT' ||
+                    name === 'HAS_ATTACHMENT' ||
+                    name.includes('ATTACH') ||
+                    name === 'MIME_BASE64_TEXT' ||
+                    name === 'MIME_ARCHIVE_IN_ARCHIVE'
+                );
+            }
+
             const logResult = await pool.query(`
                 INSERT INTO mail_logs (
                     tenant_id, message_id, from_address, to_address, subject, 
-                    size_bytes, direction, status, spam_score, is_spam, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+                    size_bytes, direction, status, spam_score, is_spam, has_attachment, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
                 RETURNING id
             `, [
                 tenant_id, message_id, from_address, to_address, subject,
-                size_bytes, direction, status, spam_score, is_spam
+                size_bytes, direction, status, spam_score, is_spam, has_attachment
             ]);
 
             const logId = logResult.rows[0].id;
 
-            // Process AI Symbols if present
-            const rawSymbols = log.symbols || [];
+            // Process AI Symbols if present (reuse rawSymbols from attachment detection)
             const symbols = {};
 
             // Normalize symbols to map { NAME: symbolObject }

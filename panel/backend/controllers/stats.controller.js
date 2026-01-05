@@ -32,11 +32,29 @@ exports.getStats = async (req, res) => {
         stats.spamBlocked = parseInt(spamBlocked.rows[0]?.total || 0);
 
         // Virus detected this week (from mail_logs)
+        // Includes: 
+        // 1. Emails with status = 'virus' (traditional virus detection)
+        // 2. Emails with is_virus = true
+        // 3. Emails blocked by spam/phishing (from AI) that have attachments
         const virusDetected = await pool.query(`
             SELECT COUNT(*) as total
-            FROM mail_logs 
-            WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
-            AND status = 'virus'
+            FROM mail_logs ml
+            LEFT JOIN ai_verdicts av ON av.mail_log_id = ml.id
+            WHERE ml.created_at >= CURRENT_DATE - INTERVAL '7 days'
+            AND (
+                -- Traditional virus detection
+                ml.status = 'virus' 
+                OR ml.is_virus = true
+                -- Spam/Phishing with attachments treated as virus threat
+                OR (
+                    ml.has_attachment = true 
+                    AND (
+                        ml.is_spam = true 
+                        OR ml.status = 'rejected'
+                        OR av.ai_label IN ('phishing', 'fraud', 'spam')
+                    )
+                )
+            )
         `);
         stats.virusDetected = parseInt(virusDetected.rows[0]?.total || 0);
 
@@ -89,16 +107,30 @@ exports.getStats = async (req, res) => {
         stats.recentActivity = recentActivity.rows;
 
         // Stats trend (last 7 days) - aggregate from mail_logs
+        // Updated to include spam/phishing with attachments as virus detections
         const trend = await pool.query(`
             SELECT 
-                DATE(created_at) as date,
+                DATE(ml.created_at) as date,
                 COUNT(*) as received,
-                SUM(CASE WHEN status IN ('delivered', 'accepted') THEN 1 ELSE 0 END) as delivered,
-                SUM(CASE WHEN is_spam = true OR status = 'rejected' OR spam_score > 15 THEN 1 ELSE 0 END) as spam,
-                SUM(CASE WHEN status = 'virus' THEN 1 ELSE 0 END) as virus
-            FROM mail_logs 
-            WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
-            GROUP BY DATE(created_at)
+                SUM(CASE WHEN ml.status IN ('delivered', 'accepted') THEN 1 ELSE 0 END) as delivered,
+                SUM(CASE 
+                    WHEN ml.is_spam = true OR ml.status = 'rejected' OR ml.spam_score > 15 
+                    THEN 1 ELSE 0 
+                END) as spam,
+                SUM(CASE 
+                    WHEN ml.status = 'virus' 
+                        OR ml.is_virus = true
+                        OR (ml.has_attachment = true AND (
+                            ml.is_spam = true 
+                            OR ml.status = 'rejected'
+                            OR av.ai_label IN ('phishing', 'fraud', 'spam')
+                        ))
+                    THEN 1 ELSE 0 
+                END) as virus
+            FROM mail_logs ml
+            LEFT JOIN ai_verdicts av ON av.mail_log_id = ml.id
+            WHERE ml.created_at >= CURRENT_DATE - INTERVAL '7 days'
+            GROUP BY DATE(ml.created_at)
             ORDER BY date ASC
         `);
 

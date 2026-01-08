@@ -112,6 +112,7 @@ services:
       - ./rspamd/override.d:/etc/rspamd/override.d
       - ./rspamd/scripts:/etc/rspamd/scripts
       - ./rspamd/scripts/entrypoint.sh:/entrypoint.sh
+      - ./rspamd/rspamd.conf.local:/etc/rspamd/rspamd.conf.local
       - panel_logs:/var/log/rspamd
     networks:
       onlitec_email_network:

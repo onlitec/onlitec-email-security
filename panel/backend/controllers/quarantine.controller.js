@@ -286,3 +286,51 @@ exports.bulkRelease = async (req, res) => {
         res.status(500).json({ success: false, error: { code: 'BULK_ERROR', message: 'Failed to release emails' } });
     }
 };
+
+// Ingest quarantined email from Rspamd
+exports.ingest = async (req, res) => {
+    try {
+        const {
+            tenant_id,
+            message_id,
+            from_address,
+            to_address,
+            subject,
+            size_bytes,
+            reason,
+            spam_score,
+            body,
+            headers
+        } = req.body;
+
+        if (!tenant_id || !message_id) {
+            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        }
+
+        const result = await pool.query(`
+            INSERT INTO quarantine (
+                tenant_id, message_id, from_address, to_address, subject, 
+                size_bytes, reason, spam_score, body, headers, status, created_at, expires_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'quarantined', NOW(), NOW() + INTERVAL '30 days')
+            RETURNING id
+        `, [
+            tenant_id,
+            message_id,
+            from_address,
+            to_address,
+            subject,
+            size_bytes || 0,
+            reason || 'spam',
+            spam_score || 0,
+            body || '',
+            typeof headers === 'object' ? JSON.stringify(headers) : (headers || '{}')
+        ]);
+
+        logger.info(`Email ingested into quarantine: ${result.rows[0].id} (MsgID: ${message_id})`);
+        res.status(201).json({ success: true, id: result.rows[0].id });
+
+    } catch (error) {
+        logger.error('Error ingesting into quarantine:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};

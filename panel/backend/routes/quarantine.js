@@ -3,6 +3,9 @@ const router = express.Router();
 const quarantineController = require('../controllers/quarantine.controller');
 const { authenticateToken, requireRole } = require('../middleware/auth.middleware');
 
+// POST /api/quarantine/ingest - Ingest quarantined email (Internal)
+router.post('/ingest', quarantineController.ingest);
+
 router.use(authenticateToken);
 
 // GET /api/quarantine - List quarantined emails

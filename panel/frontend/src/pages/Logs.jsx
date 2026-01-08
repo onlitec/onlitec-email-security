@@ -10,6 +10,7 @@ export default function Logs() {
     const [filter, setFilter] = useState({ search: '', status: '', sender: '', recipient: '' })
     const [page, setPage] = useState(1)
     const [pagination, setPagination] = useState({ total: 0, pages: 0 })
+    const [selected, setSelected] = useState([])
 
     useEffect(() => { fetchLogs() }, [filter, page])
     useEffect(() => { fetchStats() }, [])
@@ -36,6 +37,45 @@ export default function Logs() {
         }
     }
 
+    const handleApprove = async (id) => {
+        if (!confirm(t('logs.confirmApprove', 'Deseja adicionar este remetente à lista de permissões?'))) return
+        try {
+            await api.post(`/logs/${id}/approve`)
+            alert(t('logs.approved', 'Remetente liberado!'))
+        } catch (err) {
+            alert(err.response?.data?.error?.message || t('logs.approveFailed', 'Falha ao aprovar'))
+        }
+    }
+
+    const handleReject = async (id) => {
+        if (!confirm(t('logs.confirmReject', 'Deseja bloquear este remetente?'))) return
+        try {
+            await api.post(`/logs/${id}/reject`)
+            alert(t('logs.rejected', 'Remetente bloqueado!'))
+        } catch (err) {
+            alert(err.response?.data?.error?.message || t('logs.rejectFailed', 'Falha ao rejeitar'))
+        }
+    }
+
+    const handleBulkAction = async (action) => {
+        if (selected.length === 0) return
+        const msg = action === 'approve' ? 'Aprovar' : 'Rejeitar';
+        if (!confirm(t(`logs.confirmBulk${action}`, `${msg} remetentes de ${selected.length} logs?`))) return
+        try {
+            for (const id of selected) {
+                await api.post(`/logs/${id}/${action}`)
+            }
+            setSelected([])
+            alert(t('logs.bulkSuccess', 'Ação em massa concluída!'))
+        } catch (err) {
+            alert(err.response?.data?.error?.message || t('logs.bulkActionFailed', 'Falha na ação em massa'))
+        }
+    }
+
+    const toggleSelect = (id) => {
+        setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+    }
+
     const formatDate = (date) => new Date(date).toLocaleString('pt-BR')
 
     const statusColors = {
@@ -58,9 +98,23 @@ export default function Logs() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-bold text-gray-900">{t('logs.title')}</h2>
-                <p className="text-sm text-gray-600">{t('logs.subtitle')}</p>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('logs.title')}</h2>
+                    <p className="text-sm text-gray-600">{t('logs.subtitle')}</p>
+                </div>
+                <div className="flex gap-2">
+                    {selected.length > 0 && (
+                        <>
+                            <button onClick={() => handleBulkAction('approve')} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm">
+                                {t('logs.approveSelected', 'Aprovar')} ({selected.length})
+                            </button>
+                            <button onClick={() => handleBulkAction('reject')} className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm">
+                                {t('logs.rejectSelected', 'Rejeitar')} ({selected.length})
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
             {stats && (
@@ -98,17 +152,28 @@ export default function Logs() {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
+                            <th className="px-4 py-3 text-left">
+                                <input type="checkbox" onChange={(e) => {
+                                    if (e.target.checked) setSelected(logs.map(l => l.id))
+                                    else setSelected([])
+                                }} checked={selected.length === logs.length && logs.length > 0} className="rounded border-gray-300" />
+                            </th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.from')}</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.to')}</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.subject')}</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('quarantine.score')}</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.date')}</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('common.actions', 'Ações')}</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {logs.map((log) => (
-                            <tr key={log.id}>
+                            <tr key={log.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3">
+                                    <input type="checkbox" checked={selected.includes(log.id)}
+                                        onChange={() => toggleSelect(log.id)} className="rounded border-gray-300" />
+                                </td>
                                 <td className="px-4 py-3 text-sm text-gray-900 max-w-[150px] truncate">{log.sender}</td>
                                 <td className="px-4 py-3 text-sm text-gray-500 max-w-[150px] truncate">{log.recipient}</td>
                                 <td className="px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">{log.subject || '-'}</td>
@@ -119,6 +184,18 @@ export default function Logs() {
                                 </td>
                                 <td className="px-4 py-3 text-sm text-gray-500">{log.spam_score !== null ? Number(log.spam_score).toFixed(1) : '-'}</td>
                                 <td className="px-4 py-3 text-sm text-gray-500">{formatDate(log.created_at)}</td>
+                                <td className="px-4 py-3 text-right text-sm space-x-2">
+                                    <button onClick={() => handleApprove(log.id)} className="text-green-600 hover:text-green-900" title={t('logs.approve', 'Aprovar')}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </button>
+                                    <button onClick={() => handleReject(log.id)} className="text-red-600 hover:text-red-900" title={t('logs.reject', 'Rejeitar')}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </td>
                             </tr>
                         ))}
                         {logs.length === 0 && (

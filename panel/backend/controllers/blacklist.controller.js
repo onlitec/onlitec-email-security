@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const logger = require('../config/logger');
+const { getRedisClient } = require('../config/redis');
 
 const pool = new Pool({
     host: process.env.POSTGRES_HOST || process.env.DB_HOST || 'onlitec_emailprotect_db',
@@ -69,6 +70,17 @@ exports.create = async (req, res) => {
         `, [tenant_id, type, value, comment || null]);
 
         logger.info(`Blacklist entry created: ${type}:${value}`);
+
+        // Sync to Redis
+        try {
+            const redis = await getRedisClient();
+            const redisKey = `blacklist:${tenant_id}:${type}:${value.toLowerCase()}`;
+            await redis.set(redisKey, '1');
+            logger.info(`Blacklist entry synced to Redis: ${redisKey}`);
+        } catch (redisError) {
+            logger.error('Error syncing blacklist to Redis:', redisError);
+        }
+
         res.status(201).json({ success: true, data: result.rows[0] });
 
     } catch (error) {
@@ -83,13 +95,25 @@ exports.delete = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const result = await pool.query('DELETE FROM blacklist WHERE id = $1 RETURNING id, value', [id]);
+        const result = await pool.query('DELETE FROM blacklist WHERE id = $1 RETURNING id, tenant_id, type, value', [id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Entry not found' } });
         }
 
-        logger.info(`Blacklist entry deleted: ${result.rows[0].value}`);
+        const entry = result.rows[0];
+        logger.info(`Blacklist entry deleted: ${entry.value}`);
+
+        // Remove from Redis
+        try {
+            const redis = await getRedisClient();
+            const redisKey = `blacklist:${entry.tenant_id}:${entry.type}:${entry.value.toLowerCase()}`;
+            await redis.del(redisKey);
+            logger.info(`Blacklist entry removed from Redis: ${redisKey}`);
+        } catch (redisError) {
+            logger.error('Error removing blacklist entry from Redis:', redisError);
+        }
+
         res.json({ success: true, message: 'Entry deleted successfully' });
 
     } catch (error) {

@@ -66,31 +66,94 @@ local function get_tenant_policy(task, tenant_id)
 end
 
 local function check_tenant_whitelist(task, tenant_id, from_addr, from_domain, client_ip)
-  -- Check if sender is in tenant's whitelist
+  -- Check if sender is in tenant's whitelist via Redis
   
   local redis_params = {
     host = os.getenv("REDIS_HOST") or "onlitec_redis",
     port = tonumber(os.getenv("REDIS_PORT")) or 6379
   }
   
+  local is_whitelisted = false
+  
   -- Check email whitelist
-  local email_key = string.format("tenant:%s:whitelist:email:%s", tenant_id, from_addr)
+  local email_key = string.format("tenant:%s:whitelist:email:%s", tenant_id, from_addr:lower())
   -- Check domain whitelist
-  local domain_key = string.format("tenant:%s:whitelist:domain:%s", tenant_id, from_domain)
+  local domain_key = string.format("tenant:%s:whitelist:domain:%s", tenant_id, from_domain:lower())
   -- Check IP whitelist
   local ip_key = string.format("tenant:%s:whitelist:ip:%s", tenant_id, tostring(client_ip))
   
-  -- TODO: Implement Redis checks
-  -- Return true if whitelisted
-  return false
+  local keys_to_check = { email_key, domain_key, ip_key }
+  
+  for _, key in ipairs(keys_to_check) do
+    local ret = rspamd_redis.redis_make_request(task,
+      redis_params,
+      nil,
+      true, -- is write = false
+      function(err, data)
+        if data and (data == "1" or data == 1 or (type(data) == "string" and #data > 0)) then
+          is_whitelisted = true
+        end
+      end,
+      'EXISTS',
+      {key}
+    )
+  end
+  
+  return is_whitelisted
 end
 
 local function check_tenant_blacklist(task, tenant_id, from_addr, from_domain, client_ip)
-  -- Check if sender is in tenant's blacklist
+  -- Check if sender is in tenant's blacklist via Redis
+  -- Keys are synced from PostgreSQL by backend periodically or on insert
   
-  -- Similar to whitelist check
-  -- Return true if blacklisted
-  return false
+  local redis_params = {
+    host = os.getenv("REDIS_HOST") or "onlitec_redis",
+    port = tonumber(os.getenv("REDIS_PORT")) or 6379
+  }
+  
+  local is_blacklisted = false
+  local blacklist_reason = ""
+  
+  -- Check email blacklist
+  local email_key = string.format("blacklist:%s:email:%s", tenant_id, from_addr:lower())
+  local domain_key = string.format("blacklist:%s:domain:%s", tenant_id, from_domain:lower())
+  local ip_key = string.format("blacklist:%s:ip:%s", tenant_id, tostring(client_ip))
+  
+  -- Also check global blacklist (no tenant prefix)
+  local global_email_key = string.format("blacklist:global:email:%s", from_addr:lower())
+  local global_domain_key = string.format("blacklist:global:domain:%s", from_domain:lower())
+  local global_ip_key = string.format("blacklist:global:ip:%s", tostring(client_ip))
+  
+  local function redis_exists_cb(err, data)
+    if not err and data and tonumber(data) == 1 then
+      is_blacklisted = true
+    end
+  end
+  
+  -- Check all keys (async doesn't work well here, so using sync approach)
+  -- In production, consider using a Lua script for atomic check
+  local keys_to_check = {
+    email_key, domain_key, ip_key,
+    global_email_key, global_domain_key, global_ip_key
+  }
+  
+  for _, key in ipairs(keys_to_check) do
+    local ret = rspamd_redis.redis_make_request(task,
+      redis_params,
+      nil, -- no hash key
+      true, -- is write = false
+      function(err, data)
+        if data and (data == "1" or data == 1 or (type(data) == "string" and #data > 0)) then
+          is_blacklisted = true
+          blacklist_reason = key
+        end
+      end,
+      'EXISTS',
+      {key}
+    )
+  end
+  
+  return is_blacklisted, blacklist_reason
 end
 
 -- Main callback for multi-tenant filtering

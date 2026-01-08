@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const logger = require('../config/logger');
+const { getRedisClient } = require('../config/redis');
 
 const pool = new Pool({
     host: process.env.POSTGRES_HOST || process.env.DB_HOST || 'onlitec_emailprotect_db',
@@ -68,6 +69,17 @@ exports.create = async (req, res) => {
         `, [tenant_id, type, value, comment || null]);
 
         logger.info(`Whitelist entry created: ${type}:${value}`);
+
+        // Sync to Redis
+        try {
+            const redis = await getRedisClient();
+            const redisKey = `tenant:${tenant_id}:whitelist:${type}:${value.toLowerCase()}`;
+            await redis.set(redisKey, '1');
+            logger.info(`Whitelist entry synced to Redis: ${redisKey}`);
+        } catch (redisError) {
+            logger.error('Error syncing whitelist to Redis:', redisError);
+        }
+
         res.status(201).json({ success: true, data: result.rows[0] });
 
     } catch (error) {
@@ -82,13 +94,25 @@ exports.delete = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const result = await pool.query('DELETE FROM whitelist WHERE id = $1 RETURNING id, value', [id]);
+        const result = await pool.query('DELETE FROM whitelist WHERE id = $1 RETURNING id, tenant_id, type, value', [id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Entry not found' } });
         }
 
-        logger.info(`Whitelist entry deleted: ${result.rows[0].value}`);
+        const entry = result.rows[0];
+        logger.info(`Whitelist entry deleted: ${entry.value}`);
+
+        // Remove from Redis
+        try {
+            const redis = await getRedisClient();
+            const redisKey = `tenant:${entry.tenant_id}:whitelist:${entry.type}:${entry.value.toLowerCase()}`;
+            await redis.del(redisKey);
+            logger.info(`Whitelist entry removed from Redis: ${redisKey}`);
+        } catch (redisError) {
+            logger.error('Error removing whitelist entry from Redis:', redisError);
+        }
+
         res.json({ success: true, message: 'Entry deleted successfully' });
 
     } catch (error) {

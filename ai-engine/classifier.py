@@ -23,7 +23,7 @@ class EmailClassifier:
     """
     
     def __init__(self):
-        self.model_version = "1.0.0-heuristic"
+        self.model_version = "2.0.0-enhanced"
         self.model_loaded = True
         
         # Phishing indicators
@@ -84,6 +84,46 @@ class EmailClassifier:
             r'a\s+qualquer\s+momento',
             r'cancelamento\s+definitivo'
         ]
+        
+        # Vague/short subject patterns (HIGH spam indicator - v2.0)
+        self.vague_subject_patterns = [
+            r'^your\s+document$',
+            r'^your\s+file$',
+            r'^your\s+invoice$',
+            r'^your\s+order$',
+            r'^your\s+package$',
+            r'^your\s+receipt$',
+            r'^shared\s+document$',
+            r'^shared\s+file$',
+            r'^document\s+shared$',
+            r'^action\s+required$',
+            r'^urgent$',
+            r'^important$',
+            r'^notification$',
+            r'^fwd:\s*$',
+            r'^re:\s*$',
+            r'^attached$',
+            r'^see\s+attached$',
+            r'^please\s+review$',
+            r'^for\s+your\s+review$'
+        ]
+        
+        # Suspicious TLDs commonly used for spam/phishing
+        self.suspicious_tlds = [
+            '.cfd', '.shop', '.xyz', '.top', '.click', '.link', 
+            '.pw', '.tk', '.ml', '.ga', '.cf', '.gq', '.site', 
+            '.online', '.store', '.buzz', '.work', '.icu'
+        ]
+        
+        # Mass-mailing sender patterns
+        self.mass_mail_patterns = [
+            r'^[a-z]+@[a-z]{2,5}\.[a-z]{2,3}$',  # Generic: jenny@gsd.com
+            r'@relatorios\d+[a-z]\.',  # Campaign pattern: relatorios01a
+            r'^no-?reply\d+@',
+            r'^info\d+@',
+            r'^admin\d+@',
+            r'@.*\d{5,}.*\.'  # Domain with many numbers
+        ]
     
     def _calculate_entropy(self, text: str) -> float:
         """Calculate Shannon entropy of a string"""
@@ -132,6 +172,71 @@ class EmailClassifier:
                  score += 0.3
                  reasons.append(f"Suspicious high-entropy subdomain: {subdomain}")
 
+        return score, reasons
+    
+    def _check_vague_subject(self, subject: str) -> tuple[float, list[str]]:
+        """Check for vague/generic subjects commonly used in spam/phishing"""
+        score = 0.0
+        reasons = []
+        
+        if not subject:
+            return score, reasons
+        
+        subject_clean = subject.strip().lower()
+        
+        # Check against vague subject patterns
+        for pattern in self.vague_subject_patterns:
+            if re.search(pattern, subject_clean, re.IGNORECASE):
+                score += 0.45  # High score for vague subjects
+                reasons.append(f"Vague/generic subject detected: '{subject_clean}'")
+                break
+        
+        # Additional: very short subject (<=15 chars) without RE:/FWD:
+        if len(subject_clean) <= 15 and not subject_clean.startswith(('re:', 'fwd:', 'enc:')):
+            score += 0.2
+            reasons.append(f"Very short subject ({len(subject_clean)} chars)")
+        
+        return score, reasons
+    
+    def _check_suspicious_sender(self, headers: dict) -> tuple[float, list[str]]:
+        """Check sender for suspicious patterns and TLDs"""
+        score = 0.0
+        reasons = []
+        
+        if not headers or not headers.get('from_address'):
+            return score, reasons
+        
+        from_addr = headers.get('from_address', '').lower()
+        # Extract email part if format is "Name <email>"
+        email_match = re.search(r'<([^>]+)>', from_addr)
+        email = email_match.group(1) if email_match else from_addr
+        email = email.strip('<> ')
+        
+        if '@' not in email:
+            return score, reasons
+        
+        local_part, domain = email.split('@', 1)
+        
+        # Check for suspicious TLDs
+        for tld in self.suspicious_tlds:
+            if domain.endswith(tld) or tld + '.' in domain:
+                score += 0.4
+                reasons.append(f"Suspicious TLD in sender domain: {tld}")
+                break
+        
+        # Check mass-mailing patterns
+        for pattern in self.mass_mail_patterns:
+            if re.search(pattern, email, re.IGNORECASE):
+                score += 0.35
+                reasons.append(f"Mass-mailing sender pattern detected")
+                break
+        
+        # Check for very short/generic domain (e.g., gsd.com)
+        domain_base = domain.split('.')[0]
+        if len(domain_base) <= 4 and domain_base.isalpha():
+            score += 0.25
+            reasons.append(f"Very short/generic domain: {domain}")
+        
         return score, reasons
         
 
@@ -311,6 +416,16 @@ class EmailClassifier:
         if pt_urgency_matches:
             phishing_score += 0.35
             reasons.append(f"PT Urgency language detected ({len(pt_urgency_matches)} patterns)")
+        
+        # NEW v2.0: Check vague/generic subject
+        vague_score, vague_reasons = self._check_vague_subject(subject)
+        phishing_score += vague_score
+        reasons.extend(vague_reasons)
+        
+        # NEW v2.0: Check suspicious sender patterns and TLDs
+        susp_sender_score, susp_sender_reasons = self._check_suspicious_sender(headers)
+        phishing_score += susp_sender_score
+        reasons.extend(susp_sender_reasons)
 
         # Check Government impersonation
         gov_matches = self._check_patterns(full_text, self.pt_government_keywords)
@@ -332,19 +447,19 @@ class EmailClassifier:
         if spam_matches:
             spam_score += min(0.5, len(spam_matches) * 0.15)
         
-        # Determine classification
+        # Determine classification - v2.0: Lowered thresholds for better detection
         phishing_score = min(phishing_score, 1.0)
         spam_score = min(spam_score, 1.0)
         
-        if phishing_score >= 0.6:
+        if phishing_score >= 0.5:  # Lowered from 0.6
             label = ClassificationLabel.PHISHING
             confidence = phishing_score
             rspamd_score = confidence * settings.phishing_score_weight
-        elif phishing_score >= 0.4:
+        elif phishing_score >= 0.35:  # Lowered from 0.4
             label = ClassificationLabel.FRAUD
             confidence = phishing_score
             rspamd_score = confidence * settings.fraud_score_weight
-        elif spam_score >= 0.5:
+        elif spam_score >= 0.4:  # Lowered from 0.5
             label = ClassificationLabel.SPAM
             confidence = spam_score
             rspamd_score = confidence * settings.spam_score_weight

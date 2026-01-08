@@ -2,13 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSettings } from '../contexts/SettingsContext'
-import pkg from '../../package.json'
 
 export default function Layout({ children, setAuth }) {
     const navigate = useNavigate()
     const location = useLocation()
     const { t, i18n } = useTranslation()
-    const { settings } = useSettings()
+    const { settings, loading } = useSettings()
     const user = JSON.parse(localStorage.getItem('user') || '{}')
     const [settingsOpen, setSettingsOpen] = useState(false)
     const [profileOpen, setProfileOpen] = useState(false)
@@ -51,6 +50,7 @@ export default function Layout({ children, setAuth }) {
         { name: t('nav.aliases'), href: '/aliases' },
         { name: t('nav.policies'), href: '/policies' },
         { name: t('nav.quarantine'), href: '/quarantine' },
+        { name: t('nav.reports', 'Relatórios'), href: '/reports' },
         { name: t('nav.aiVerdicts', 'IA'), href: '/ai-verdicts' }
     ]
 
@@ -70,6 +70,11 @@ export default function Layout({ children, setAuth }) {
     }
 
     const isSettingsActive = settingsItems.some(item => isActive(item.href))
+
+    // Format version string
+    const displayVersion = settings.version
+        ? (settings.version.startsWith('v') ? settings.version : `v${settings.version}`)
+        : (loading ? '...' : 'v2.0.0')
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -92,9 +97,7 @@ export default function Layout({ children, setAuth }) {
                             </div>
                             <div className="flex-shrink-0 flex items-center ml-2 border-l pl-2 border-gray-300 h-6">
                                 <span className="text-xs text-gray-400 font-mono">
-                                    {(settings.version || pkg.version || '1.0.0').startsWith('v')
-                                        ? (settings.version || pkg.version || '1.0.0')
-                                        : `v${settings.version || pkg.version || '1.0.0'}`}
+                                    {displayVersion}
                                 </span>
                             </div>
                             <div className="hidden lg:ml-6 lg:flex lg:space-x-4">

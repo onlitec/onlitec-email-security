@@ -23,6 +23,26 @@ export default function Quarantine() {
         }
     }
 
+    const handleApprove = async (id) => {
+        if (!confirm(t('quarantine.confirmApprove', 'Aprovar e liberar este email? O remetente será adicionado à lista de permissões.'))) return
+        try {
+            await api.post(`/quarantine/${id}/approve`)
+            fetchEmails()
+        } catch (err) {
+            alert(err.response?.data?.error?.message || t('quarantine.approveFailed', 'Falha ao aprovar'))
+        }
+    }
+
+    const handleReject = async (id) => {
+        if (!confirm(t('quarantine.confirmReject', 'Rejeitar este email? O remetente será bloqueado.'))) return
+        try {
+            await api.post(`/quarantine/${id}/reject`)
+            fetchEmails()
+        } catch (err) {
+            alert(err.response?.data?.error?.message || t('quarantine.rejectFailed', 'Falha ao rejeitar'))
+        }
+    }
+
     const handleRelease = async (id) => {
         if (!confirm(t('quarantine.confirmRelease', 'Liberar este email?'))) return
         try {
@@ -55,6 +75,21 @@ export default function Quarantine() {
         }
     }
 
+    const handleBulkAction = async (action) => {
+        if (selected.length === 0) return
+        const msg = action === 'approve' ? 'Aprovar' : 'Rejeitar';
+        if (!confirm(t(`quarantine.confirmBulk${action}`, `${msg} ${selected.length} emails?`))) return
+        try {
+            for (const id of selected) {
+                await api.post(`/quarantine/${id}/${action}`)
+            }
+            setSelected([])
+            fetchEmails()
+        } catch (err) {
+            alert(err.response?.data?.error?.message || t('quarantine.bulkActionFailed', 'Falha na ação em massa'))
+        }
+    }
+
     const toggleSelect = (id) => {
         setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
     }
@@ -70,11 +105,21 @@ export default function Quarantine() {
                     <h2 className="text-2xl font-bold text-gray-900">{t('quarantine.title')}</h2>
                     <p className="text-sm text-gray-600">{t('quarantine.subtitle')}</p>
                 </div>
-                {selected.length > 0 && (
-                    <button onClick={handleBulkRelease} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
-                        {t('quarantine.releaseSelected')} ({selected.length})
-                    </button>
-                )}
+                <div className="flex gap-2">
+                    {selected.length > 0 && (
+                        <>
+                            <button onClick={() => handleBulkAction('approve')} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm">
+                                {t('quarantine.approveSelected', 'Aprovar')} ({selected.length})
+                            </button>
+                            <button onClick={() => handleBulkAction('reject')} className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm">
+                                {t('quarantine.rejectSelected', 'Rejeitar')} ({selected.length})
+                            </button>
+                            <button onClick={handleBulkRelease} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm">
+                                {t('quarantine.releaseSelected', 'Liberar')} ({selected.length})
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
             <div className="bg-white rounded-lg shadow p-4 flex gap-4">
@@ -124,11 +169,21 @@ export default function Quarantine() {
                                 </td>
                                 <td className="px-4 py-3 text-sm text-gray-500">{email.score !== null ? Number(email.score).toFixed(1) : '-'}</td>
                                 <td className="px-4 py-3 text-sm text-gray-500">{formatDate(email.created_at)}</td>
-                                <td className="px-4 py-3 text-right text-sm space-x-2">
+                                <td className="px-4 py-3 text-right text-sm space-x-3">
                                     {email.status === 'quarantined' && (
-                                        <button onClick={() => handleRelease(email.id)} className="text-green-600 hover:text-green-900">{t('quarantine.release')}</button>
+                                        <>
+                                            <button onClick={() => handleApprove(email.id)} className="text-green-600 hover:text-green-900 font-medium" title={t('quarantine.approve', 'Aprovar')}>
+                                                {t('quarantine.approve', 'Aprovar')}
+                                            </button>
+                                            <button onClick={() => handleReject(email.id)} className="text-red-600 hover:text-red-900 font-medium" title={t('quarantine.reject', 'Rejeitar')}>
+                                                {t('quarantine.reject', 'Rejeitar')}
+                                            </button>
+                                            <button onClick={() => handleRelease(email.id)} className="text-blue-600 hover:text-blue-900" title={t('quarantine.release')}>
+                                                {t('quarantine.release')}
+                                            </button>
+                                        </>
                                     )}
-                                    <button onClick={() => handleDelete(email.id)} className="text-red-600 hover:text-red-900">{t('common.delete')}</button>
+                                    <button onClick={() => handleDelete(email.id)} className="text-gray-400 hover:text-red-600">{t('common.delete')}</button>
                                 </td>
                             </tr>
                         ))}

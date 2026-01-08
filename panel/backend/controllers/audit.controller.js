@@ -1,5 +1,7 @@
 const { Pool } = require('pg');
+const PDFDocument = require('pdfkit-table');
 const logger = require('../config/logger');
+
 
 const pool = new Pool({
     host: process.env.POSTGRES_HOST || process.env.DB_HOST || 'onlitec_emailprotect_db',
@@ -114,5 +116,83 @@ exports.stats = async (req, res) => {
     } catch (error) {
         logger.error('Error getting audit stats:', error);
         res.status(500).json({ success: false, error: { code: 'STATS_ERROR', message: 'Failed to get audit statistics' } });
+    }
+};
+// Generate Audit Proof PDF
+exports.generateProof = async (req, res) => {
+    try {
+        const { messageId } = req.body;
+
+        if (!messageId) {
+            return res.status(400).json({ success: false, error: { message: 'Message ID is required' } });
+        }
+
+        // Fetch message details
+        const result = await pool.query(`
+            SELECT l.*, t.name as tenant_name, d.domain as domain_name
+            FROM mail_logs l
+            LEFT JOIN tenants t ON l.tenant_id = t.id
+            LEFT JOIN domains d ON l.domain_id = d.id
+            WHERE l.id = $1 OR l.message_id = $1
+        `, [messageId]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: { message: 'Message not found' } });
+        }
+
+        const msg = result.rows[0];
+
+        // Generate PDF
+        const doc = new PDFDocument({ margin: 50 });
+        const buffers = [];
+
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', () => {
+            const pdfData = Buffer.concat(buffers);
+            res.set({
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `attachment; filename=proof-${msg.message_id}.pdf`,
+                'Content-Length': pdfData.length
+            });
+            res.send(pdfData);
+        });
+
+        // PDF Content
+        doc.fontSize(20).text('Comprovante de Processamento de Email', { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(12).text('A Onlitec declara para os devidos fins que a mensagem abaixo descrita foi processada por nossos sistemas de segurança.', { align: 'justify' });
+        doc.moveDown(2);
+
+        doc.fontSize(14).text('Detalhes da Mensagem', { underline: true });
+        doc.moveDown();
+
+        const details = [
+            ['Data/Hora:', new Date(msg.created_at).toLocaleString('pt-BR')],
+            ['ID da Mensagem:', msg.message_id],
+            ['Remetente:', msg.from_address],
+            ['Destinatário:', msg.to_address],
+            ['Assunto:', msg.subject],
+            ['Status Final:', msg.status.toUpperCase()],
+            ['Plataforma:', 'Onlitec Email Protection']
+        ];
+
+        details.forEach(([label, value]) => {
+            doc.fontSize(10).font('Helvetica-Bold').text(label, { continued: true });
+            doc.font('Helvetica').text(` ${value}`);
+            doc.moveDown(0.5);
+        });
+
+        doc.moveDown(2);
+        doc.fontSize(12).text(`Este documento é gerado automaticamente e atesta o status da mensagem em nossos servidores no momento da emissão.`, { align: 'justify', style: 'italic' });
+
+        doc.moveDown(2);
+        doc.text('__________________________________________', { align: 'center' });
+        doc.text('Onlitec Security Systems', { align: 'center' });
+
+        doc.end();
+
+    } catch (error) {
+        logger.error('Error generating proof:', error);
+        res.status(500).json({ success: false, error: { message: 'Failed to generate proof' } });
     }
 };

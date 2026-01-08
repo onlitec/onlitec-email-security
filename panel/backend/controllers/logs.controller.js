@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const logger = require('../config/logger');
+const { getRedisClient } = require('../config/redis');
 
 const pool = new Pool({
     host: process.env.POSTGRES_HOST || process.env.DB_HOST || 'onlitec_emailprotect_db',
@@ -260,5 +261,76 @@ exports.ingest = async (req, res) => {
     } catch (error) {
         logger.error('Error ingesting logs:', error);
         res.status(500).json({ success: false, error: { code: 'INGEST_ERROR', message: 'Failed to ingest logs' } });
+    }
+};
+// Approve sender from log
+exports.approve = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // 1. Get log info
+        const lRes = await pool.query('SELECT from_address, tenant_id FROM mail_logs WHERE id = $1', [id]);
+        if (lRes.rows.length === 0) return res.status(404).json({ success: false, message: 'Log not found' });
+
+        const log = lRes.rows[0];
+        const sender = log.from_address;
+        const tenant_id = log.tenant_id;
+
+        // 2. Add to Whitelist
+        const checkRes = await pool.query('SELECT id FROM whitelist WHERE tenant_id = $1 AND type = $2 AND value = $3',
+            [tenant_id, 'email', sender]);
+
+        if (checkRes.rows.length === 0) {
+            await pool.query('INSERT INTO whitelist (tenant_id, type, value, comment) VALUES ($1, $2, $3, $4)',
+                [tenant_id, 'email', sender, 'Manual approval from logs']);
+
+            // Sync to Redis
+            try {
+                const redis = await getRedisClient();
+                const redisKey = `tenant:${tenant_id}:whitelist:email:${sender.toLowerCase()}`;
+                await redis.set(redisKey, '1');
+            } catch (re) { logger.error('Redis sync error:', re); }
+        }
+
+        res.json({ success: true, message: 'Sender whitelisted successfully' });
+    } catch (error) {
+        logger.error('Error approving sender from log:', error);
+        res.status(500).json({ success: false, message: 'Failed to approve sender' });
+    }
+};
+
+// Reject sender from log
+exports.reject = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // 1. Get log info
+        const lRes = await pool.query('SELECT from_address, tenant_id FROM mail_logs WHERE id = $1', [id]);
+        if (lRes.rows.length === 0) return res.status(404).json({ success: false, message: 'Log not found' });
+
+        const log = lRes.rows[0];
+        const sender = log.from_address;
+        const tenant_id = log.tenant_id;
+
+        // 2. Add to Blacklist
+        const checkRes = await pool.query('SELECT id FROM blacklist WHERE tenant_id = $1 AND type = $2 AND value = $3',
+            [tenant_id, 'email', sender]);
+
+        if (checkRes.rows.length === 0) {
+            await pool.query('INSERT INTO blacklist (tenant_id, type, value, comment) VALUES ($1, $2, $3, $4)',
+                [tenant_id, 'email', sender, 'Manual rejection from logs']);
+
+            // Sync to Redis
+            try {
+                const redis = await getRedisClient();
+                const redisKey = `blacklist:${tenant_id}:email:${sender.toLowerCase()}`;
+                await redis.set(redisKey, '1');
+            } catch (re) { logger.error('Redis sync error:', re); }
+        }
+
+        res.json({ success: true, message: 'Sender blacklisted successfully' });
+    } catch (error) {
+        logger.error('Error rejecting sender from log:', error);
+        res.status(500).json({ success: false, message: 'Failed to reject sender' });
     }
 };

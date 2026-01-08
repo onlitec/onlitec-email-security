@@ -17,4 +17,10 @@ router.get('/stats', logsController.stats);
 // GET /api/logs/:id - Get single log
 router.get('/:id', logsController.get);
 
+// POST /api/logs/:id/approve - Approve sender from log
+router.post('/:id/approve', logsController.approve);
+
+// POST /api/logs/:id/reject - Reject sender from log
+router.post('/:id/reject', logsController.reject);
+
 module.exports = router;

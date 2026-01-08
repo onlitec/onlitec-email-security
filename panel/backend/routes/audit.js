@@ -9,5 +9,7 @@ router.use(requireRole(['superadmin', 'admin'])); // superadmin and admin can vi
 router.get('/', auditController.list);
 router.get('/stats', auditController.stats);
 router.get('/:id', auditController.get);
+router.post('/proof', auditController.generateProof);
+
 
 module.exports = router;

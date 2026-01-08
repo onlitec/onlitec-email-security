@@ -20,6 +20,7 @@ import Manager from './pages/Manager'
 import AdminUsers from './pages/AdminUsers'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
+import Reports from './pages/Reports'
 import Layout from './components/Layout'
 import { usePWA } from './hooks/usePWA'
 import { SettingsProvider } from './contexts/SettingsContext'
@@ -116,6 +117,7 @@ function App() {
                                     <Route path="/policies" element={<Policies />} />
                                     <Route path="/quarantine" element={<Quarantine />} />
                                     <Route path="/logs" element={<Logs />} />
+                                    <Route path="/reports" element={<Reports />} />
                                     <Route path="/audit" element={<AuditLog />} />
                                     <Route path="/settings" element={<Settings />} />
                                     <Route path="/profile" element={<Profile />} />

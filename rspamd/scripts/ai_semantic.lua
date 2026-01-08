@@ -119,16 +119,16 @@ local function ai_callback(task)
     -- Build description from reasons
     local description = table.concat(reasons, "; ")
     
-    -- Insert appropriate symbol based on classification
-    if label == "phishing" and confidence >= 0.7 then
+    -- Insert appropriate symbol based on classification (v2.0: Lowered thresholds)
+    if label == "phishing" and confidence >= 0.5 then
       task:insert_result(symbol_phishing, 1.0, description)
       rspamd_logger.infox(task, "AI classified as PHISHING (conf=%.2f, score=%.1f)", 
                           confidence, score)
-    elseif label == "fraud" and confidence >= 0.7 then
+    elseif label == "fraud" and confidence >= 0.5 then
       task:insert_result(symbol_fraud, 1.0, description)
       rspamd_logger.infox(task, "AI classified as FRAUD (conf=%.2f, score=%.1f)", 
                           confidence, score)
-    elseif label == "spam" and confidence >= 0.6 then
+    elseif label == "spam" and confidence >= 0.4 then
       task:insert_result(symbol_spam, 1.0, description)
       rspamd_logger.infox(task, "AI classified as SPAM (conf=%.2f, score=%.1f)", 
                           confidence, score)

@@ -14,6 +14,12 @@ router.get('/:id', quarantineController.get);
 // POST /api/quarantine/:id/release - Release email
 router.post('/:id/release', requireRole(['superadmin', 'admin']), quarantineController.release);
 
+// POST /api/quarantine/:id/approve - Approve email (Release + Whitelist)
+router.post('/:id/approve', requireRole(['superadmin', 'admin']), quarantineController.approve);
+
+// POST /api/quarantine/:id/reject - Reject email (Reject + Blacklist)
+router.post('/:id/reject', requireRole(['superadmin', 'admin']), quarantineController.reject);
+
 // POST /api/quarantine/bulk-release - Bulk release
 router.post('/bulk-release', requireRole(['superadmin', 'admin']), quarantineController.bulkRelease);
 

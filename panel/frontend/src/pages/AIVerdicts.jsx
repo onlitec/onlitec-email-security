@@ -81,10 +81,18 @@ function VerdictRow({ verdict, onClick }) {
     )
 }
 
-function VerdictModal({ verdict, onClose }) {
+function VerdictModal({ verdict, onClose, onApprove, onReject }) {
     if (!verdict) return null
 
     const reasons = verdict.ai_reasons || []
+
+    const handleApprove = () => {
+        onApprove(verdict)
+    }
+
+    const handleReject = () => {
+        onReject(verdict)
+    }
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -203,11 +211,11 @@ function VerdictModal({ verdict, onClose }) {
 
                     {/* Final Decision */}
                     <div className="border-t pt-4">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center mb-6">
                             <div>
                                 <p className="text-sm text-gray-600">Ação Final</p>
                                 <p className={`text-lg font-bold ${verdict.final_action === 'reject' ? 'text-red-600' :
-                                        verdict.final_action === 'quarantine' ? 'text-orange-600' : 'text-green-600'
+                                    verdict.final_action === 'quarantine' ? 'text-orange-600' : 'text-green-600'
                                     }`}>
                                     {verdict.final_action?.toUpperCase() || 'N/A'}
                                 </p>
@@ -216,6 +224,22 @@ function VerdictModal({ verdict, onClose }) {
                                 <p className="text-sm text-gray-600">Score Total</p>
                                 <p className="text-2xl font-bold">{verdict.total_score?.toFixed(1) || '0'}</p>
                             </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 justify-end border-t pt-4">
+                            <button
+                                onClick={handleApprove}
+                                className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 font-medium transition-colors"
+                            >
+                                Liberar
+                            </button>
+                            <button
+                                onClick={handleReject}
+                                className="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 font-medium transition-colors"
+                            >
+                                Bloquear
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -257,6 +281,38 @@ export default function AIVerdicts() {
             }
         } catch (err) {
             console.error('Error fetching stats:', err)
+        }
+    }
+
+    const handleApprove = async (verdict) => {
+        if (!confirm('Deseja liberar este e-mail? O remetente será adicionado à lista de permissões.')) return
+        try {
+            if (verdict.quarantine_id) {
+                await api.post(`/quarantine/${verdict.quarantine_id}/approve`)
+            } else {
+                await api.post(`/logs/${verdict.mail_log_id}/approve`)
+            }
+            setSelectedVerdict(null)
+            fetchVerdicts()
+            fetchStats()
+        } catch (err) {
+            alert(err.response?.data?.error?.message || 'Falha ao aprovar')
+        }
+    }
+
+    const handleReject = async (verdict) => {
+        if (!confirm('Deseja bloquear este e-mail? O remetente será adicionado à lista de bloqueio.')) return
+        try {
+            if (verdict.quarantine_id) {
+                await api.post(`/quarantine/${verdict.quarantine_id}/reject`)
+            } else {
+                await api.post(`/logs/${verdict.mail_log_id}/reject`)
+            }
+            setSelectedVerdict(null)
+            fetchVerdicts()
+            fetchStats()
+        } catch (err) {
+            alert(err.response?.data?.error?.message || 'Falha ao rejeitar')
         }
     }
 
@@ -386,7 +442,12 @@ export default function AIVerdicts() {
             </div>
 
             {/* Detail Modal */}
-            <VerdictModal verdict={selectedVerdict} onClose={() => setSelectedVerdict(null)} />
+            <VerdictModal
+                verdict={selectedVerdict}
+                onClose={() => setSelectedVerdict(null)}
+                onApprove={handleApprove}
+                onReject={handleReject}
+            />
         </div>
     )
 }

@@ -28,10 +28,12 @@ router.get('/verdicts', async (req, res) => {
         let query = `
             SELECT 
                 av.id, av.ai_label, av.ai_confidence, av.ai_score, av.ai_reasons, av.created_at as processed_at,
-                ml.message_id, ml.subject, ml.from_address as sender, ml.to_address as recipient,
-                ml.status as final_action, ml.spam_score as total_score
+                ml.id as mail_log_id, ml.message_id, ml.subject, ml.from_address as sender, ml.to_address as recipient,
+                ml.status as final_action, ml.spam_score as total_score,
+                q.id as quarantine_id
             FROM ai_verdicts av
             JOIN mail_logs ml ON av.mail_log_id = ml.id
+            LEFT JOIN quarantine q ON ml.message_id = q.message_id AND q.status = 'quarantined'
             WHERE 1=1
         `;
         const params = [];
@@ -168,10 +170,12 @@ router.get('/verdicts/:id', async (req, res) => {
         const result = await pool.query(`
             SELECT 
                 av.id, av.ai_label, av.ai_confidence, av.ai_score, av.ai_reasons, av.created_at as processed_at,
-                ml.message_id, ml.subject, ml.from_address as sender, ml.to_address as recipient,
-                ml.status as final_action, ml.spam_score as total_score
+                ml.id as mail_log_id, ml.message_id, ml.subject, ml.from_address as sender, ml.to_address as recipient,
+                ml.status as final_action, ml.spam_score as total_score,
+                q.id as quarantine_id
             FROM ai_verdicts av
             JOIN mail_logs ml ON av.mail_log_id = ml.id
+            LEFT JOIN quarantine q ON ml.message_id = q.message_id AND q.status = 'quarantined'
             WHERE av.id = $1
         `, [id]);
 

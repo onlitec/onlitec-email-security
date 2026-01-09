@@ -6,13 +6,13 @@ Requires=docker.service
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/home/alfreire/docker/apps/onlitec-email
+WorkingDirectory=/home/alfreire/onlitec-email-security
 Environment="WEBHOOK_SECRET=onlitec-email-webhook-secret-2024"
-ExecStart=/usr/bin/python3 /home/alfreire/docker/apps/onlitec-email/webhook-listener.py
+ExecStart=/usr/bin/python3 /home/alfreire/onlitec-email-security/webhook-listener.py
 Restart=always
 RestartSec=10
-StandardOutput=append:/home/alfreire/docker/apps/onlitec-email/webhook.log
-StandardError=append:/home/alfreire/docker/apps/onlitec-email/webhook.log
+StandardOutput=append:/home/alfreire/onlitec-email-security/webhook.log
+StandardError=append:/home/alfreire/onlitec-email-security/webhook.log
 
 [Install]
 WantedBy=multi-user.target

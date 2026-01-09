@@ -15,7 +15,7 @@ from datetime import datetime
 # Configuração
 PORT = 9002  # Porta diferente do OnliOps (9001)
 SECRET = os.environ.get('WEBHOOK_SECRET', 'onlitec-email-webhook-secret-2024')
-DEPLOY_SCRIPT = '/home/alfreire/docker/apps/onlitec-email/auto-deploy.sh'
+DEPLOY_SCRIPT = '/home/alfreire/onlitec-email-security/auto-deploy.sh'
 REPO_NAME = 'onlitec/onlitec-email-security'
 
 def log(message):

@@ -30,10 +30,14 @@ router.get('/verdicts', async (req, res) => {
                 av.id, av.ai_label, av.ai_confidence, av.ai_score, av.ai_reasons, av.created_at as processed_at,
                 ml.id as mail_log_id, ml.message_id, ml.subject, ml.from_address as sender, ml.to_address as recipient,
                 ml.status as final_action, ml.spam_score as total_score,
-                q.id as quarantine_id
+                q.id as quarantine_id,
+                CASE WHEN w.id IS NOT NULL THEN true ELSE false END as is_whitelisted,
+                CASE WHEN b.id IS NOT NULL THEN true ELSE false END as is_blacklisted
             FROM ai_verdicts av
             JOIN mail_logs ml ON av.mail_log_id = ml.id
             LEFT JOIN quarantine q ON ml.message_id = q.message_id AND q.status = 'quarantined'
+            LEFT JOIN whitelist w ON ml.tenant_id = w.tenant_id AND w.type = 'email' AND w.value = ml.from_address
+            LEFT JOIN blacklist b ON ml.tenant_id = b.tenant_id AND b.type = 'email' AND b.value = ml.from_address
             WHERE 1=1
         `;
         const params = [];
@@ -172,10 +176,14 @@ router.get('/verdicts/:id', async (req, res) => {
                 av.id, av.ai_label, av.ai_confidence, av.ai_score, av.ai_reasons, av.created_at as processed_at,
                 ml.id as mail_log_id, ml.message_id, ml.subject, ml.from_address as sender, ml.to_address as recipient,
                 ml.status as final_action, ml.spam_score as total_score,
-                q.id as quarantine_id
+                q.id as quarantine_id,
+                CASE WHEN w.id IS NOT NULL THEN true ELSE false END as is_whitelisted,
+                CASE WHEN b.id IS NOT NULL THEN true ELSE false END as is_blacklisted
             FROM ai_verdicts av
             JOIN mail_logs ml ON av.mail_log_id = ml.id
             LEFT JOIN quarantine q ON ml.message_id = q.message_id AND q.status = 'quarantined'
+            LEFT JOIN whitelist w ON ml.tenant_id = w.tenant_id AND w.type = 'email' AND w.value = ml.from_address
+            LEFT JOIN blacklist b ON ml.tenant_id = b.tenant_id AND b.type = 'email' AND b.value = ml.from_address
             WHERE av.id = $1
         `, [id]);
 

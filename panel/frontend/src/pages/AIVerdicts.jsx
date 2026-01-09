@@ -56,6 +56,8 @@ function VerdictRow({ verdict, onClick }) {
                 {verdict.subject || '(sem assunto)'}
             </td>
             <td className="px-4 py-3 text-sm text-gray-600 truncate" title={verdict.sender}>
+                {verdict.is_whitelisted && <span className="mr-1 text-green-600" title="Liberado">✅</span>}
+                {verdict.is_blacklisted && <span className="mr-1 text-red-600" title="Bloqueado">🚫</span>}
                 {verdict.sender}
             </td>
             <td className="px-4 py-3 text-center">
@@ -108,7 +110,11 @@ function VerdictModal({ verdict, onClose, onApprove, onReject }) {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <p className="text-sm text-gray-600">De</p>
-                                <p className="font-medium">{verdict.sender}</p>
+                                <p className="font-medium flex items-center">
+                                    {verdict.sender}
+                                    {verdict.is_whitelisted && <span className="ml-2 text-green-600 text-xs bg-green-100 px-2 py-0.5 rounded-full border border-green-200">Liberado</span>}
+                                    {verdict.is_blacklisted && <span className="ml-2 text-red-600 text-xs bg-red-100 px-2 py-0.5 rounded-full border border-red-200">Bloqueado</span>}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-sm text-gray-600">Para</p>

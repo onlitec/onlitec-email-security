@@ -42,6 +42,7 @@ export default function Logs() {
         try {
             await api.post(`/logs/${id}/approve`)
             alert(t('logs.approved', 'Remetente liberado!'))
+            fetchLogs()
         } catch (err) {
             alert(err.response?.data?.error?.message || t('logs.approveFailed', 'Falha ao aprovar'))
         }
@@ -52,6 +53,7 @@ export default function Logs() {
         try {
             await api.post(`/logs/${id}/reject`)
             alert(t('logs.rejected', 'Remetente bloqueado!'))
+            fetchLogs()
         } catch (err) {
             alert(err.response?.data?.error?.message || t('logs.rejectFailed', 'Falha ao rejeitar'))
         }
@@ -67,6 +69,7 @@ export default function Logs() {
             }
             setSelected([])
             alert(t('logs.bulkSuccess', 'Ação em massa concluída!'))
+            fetchLogs()
         } catch (err) {
             alert(err.response?.data?.error?.message || t('logs.bulkActionFailed', 'Falha na ação em massa'))
         }
@@ -174,7 +177,11 @@ export default function Logs() {
                                     <input type="checkbox" checked={selected.includes(log.id)}
                                         onChange={() => toggleSelect(log.id)} className="rounded border-gray-300" />
                                 </td>
-                                <td className="px-4 py-3 text-sm text-gray-900 max-w-[150px] truncate">{log.sender}</td>
+                                <td className="px-4 py-3 text-sm text-gray-900 max-w-[150px] truncate">
+                                    {log.is_whitelisted && <span className="mr-1 text-green-600" title="Whitelisted">✅</span>}
+                                    {log.is_blacklisted && <span className="mr-1 text-red-600" title="Blacklisted">🚫</span>}
+                                    {log.sender}
+                                </td>
                                 <td className="px-4 py-3 text-sm text-gray-500 max-w-[150px] truncate">{log.recipient}</td>
                                 <td className="px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">{log.subject || '-'}</td>
                                 <td className="px-4 py-3">

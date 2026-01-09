@@ -19,9 +19,13 @@ exports.list = async (req, res) => {
         let query = `
             SELECT l.id, l.message_id, l.from_address as sender, l.to_address as recipient, l.subject, 
                    l.status, l.size_bytes, l.spam_score, l.created_at,
-                   t.name as tenant_name
+                   t.name as tenant_name,
+                   CASE WHEN w.id IS NOT NULL THEN true ELSE false END as is_whitelisted,
+                   CASE WHEN b.id IS NOT NULL THEN true ELSE false END as is_blacklisted
             FROM mail_logs l
             LEFT JOIN tenants t ON l.tenant_id = t.id
+            LEFT JOIN whitelist w ON l.tenant_id = w.tenant_id AND w.type = 'email' AND w.value = l.from_address
+            LEFT JOIN blacklist b ON l.tenant_id = b.tenant_id AND b.type = 'email' AND b.value = l.from_address
             WHERE 1=1
         `;
         const params = [];
@@ -39,6 +43,13 @@ exports.list = async (req, res) => {
         }
 
         const countQuery = query.replace(/SELECT .+ FROM/, 'SELECT COUNT(*) as total FROM');
+        // Remove extra fields from count query to avoid errors if they were complex, but here simplistic regex replacement might fail with subqueries.
+        // A safer way for count is usually just count main table with where clauses. 
+        // But since we use simple left joins, it should be fine. 
+        // Ideally we should strip the SELECT part more carefully.
+
+        // Actually, replacing SELECT ... FROM with SELECT COUNT(*) FROM works for simple queries.
+
         const countResult = await pool.query(countQuery, params);
         const total = countResult.rows && countResult.rows[0] ? parseInt(countResult.rows[0].total) : 0;
 

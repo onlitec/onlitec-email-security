@@ -122,6 +122,7 @@
         "password": "Senha",
         "quota": "Cota",
         "usage": "Uso",
+        "allTenants": "Todos os Clientes",
         "noUsers": "Nenhum usuário encontrado"
     },
     "aliases": {

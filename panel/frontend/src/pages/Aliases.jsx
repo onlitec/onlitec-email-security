@@ -7,17 +7,21 @@ export default function Aliases() {
     const [aliases, setAliases] = useState([])
     const [tenants, setTenants] = useState([])
     const [domains, setDomains] = useState([])
+    const [selectedTenant, setSelectedTenant] = useState('')
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [form, setForm] = useState({ email: '', destination: '', tenant_id: '', domain_id: '', is_catch_all: false })
     const [error, setError] = useState('')
 
-    useEffect(() => { fetchData() }, [])
+    useEffect(() => { fetchData() }, [selectedTenant])
 
     const fetchData = async () => {
         try {
+            const params = {}
+            if (selectedTenant) params.tenant_id = selectedTenant
+
             const [aliasesRes, tenantsRes, domainsRes] = await Promise.all([
-                api.get('/aliases'),
+                api.get('/aliases', { params }),
                 api.get('/tenants'),
                 api.get('/domains')
             ])
@@ -79,12 +83,30 @@ export default function Aliases() {
                 </button>
             </div>
 
+            {/* Filters */}
+            <div className="bg-white p-4 shadow rounded-lg flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                    <label className="text-sm font-medium text-gray-700">{t('common.filter')}:</label>
+                    <select
+                        value={selectedTenant}
+                        onChange={(e) => setSelectedTenant(e.target.value)}
+                        className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                    >
+                        <option value="">{t('users.allTenants', 'Todos os Clientes')}</option>
+                        {tenants.map(tenant => (
+                            <option key={tenant.id} value={tenant.id}>{tenant.name}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
             <div className="bg-white shadow rounded-lg overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('aliases.email')}</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('aliases.destination')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('domains.tenant')}</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('domains.domain')}</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('quarantine.type')}</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
@@ -96,6 +118,7 @@ export default function Aliases() {
                             <tr key={alias.id}>
                                 <td className="px-4 py-4 font-medium text-gray-900">{alias.email}</td>
                                 <td className="px-4 py-4 text-gray-500">{alias.destination}</td>
+                                <td className="px-4 py-4 text-gray-500">{alias.tenant_name}</td>
                                 <td className="px-4 py-4 text-gray-500">{alias.domain_name}</td>
                                 <td className="px-4 py-4">
                                     <span className={`px-2 py-1 text-xs rounded-full ${alias.is_catch_all ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}`}>
@@ -114,7 +137,7 @@ export default function Aliases() {
                             </tr>
                         ))}
                         {aliases.length === 0 && (
-                            <tr><td colSpan="6" className="px-4 py-4 text-center text-gray-500">{t('aliases.noAliases')}</td></tr>
+                            <tr><td colSpan="7" className="px-4 py-4 text-center text-gray-500">{t('aliases.noAliases')}</td></tr>
                         )}
                     </tbody>
                 </table>

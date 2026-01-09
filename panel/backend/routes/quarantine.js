@@ -15,24 +15,24 @@ router.get('/', quarantineController.list);
 router.get('/:id', quarantineController.get);
 
 // POST /api/quarantine/:id/release - Release email
-router.post('/:id/release', requireRole(['super-admin', 'admin']), quarantineController.release);
+router.post('/:id/release', requireRole(['superadmin', 'admin']), quarantineController.release);
 
 // POST /api/quarantine/:id/approve - Approve email (Release + Whitelist)
-router.post('/:id/approve', requireRole(['super-admin', 'admin']), quarantineController.approve);
+router.post('/:id/approve', requireRole(['superadmin', 'admin']), quarantineController.approve);
 
 // POST /api/quarantine/:id/reject - Reject email (Reject + Blacklist)
-router.post('/:id/reject', requireRole(['super-admin', 'admin']), quarantineController.reject);
+router.post('/:id/reject', requireRole(['superadmin', 'admin']), quarantineController.reject);
 
 // POST /api/quarantine/bulk-release - Bulk release
-router.post('/bulk-release', requireRole(['super-admin', 'admin']), quarantineController.bulkRelease);
+router.post('/bulk-release', requireRole(['superadmin', 'admin']), quarantineController.bulkRelease);
 
 // POST /api/quarantine/bulk-approve - Bulk approve
-router.post('/bulk-approve', requireRole(['super-admin', 'admin']), quarantineController.bulkApprove);
+router.post('/bulk-approve', requireRole(['superadmin', 'admin']), quarantineController.bulkApprove);
 
 // POST /api/quarantine/bulk-reject - Bulk reject
-router.post('/bulk-reject', requireRole(['super-admin', 'admin']), quarantineController.bulkReject);
+router.post('/bulk-reject', requireRole(['superadmin', 'admin']), quarantineController.bulkReject);
 
 // DELETE /api/quarantine/:id - Delete email
-router.delete('/:id', requireRole(['super-admin', 'admin']), quarantineController.delete);
+router.delete('/:id', requireRole(['superadmin', 'admin']), quarantineController.delete);
 
 module.exports = router;

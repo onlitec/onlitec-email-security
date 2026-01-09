@@ -7,17 +7,21 @@ export default function Users() {
     const [users, setUsers] = useState([])
     const [tenants, setTenants] = useState([])
     const [domains, setDomains] = useState([])
+    const [selectedTenant, setSelectedTenant] = useState('')
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [form, setForm] = useState({ email: '', password: '', tenant_id: '', domain_id: '', quota_mb: 1024, status: 'active' })
     const [error, setError] = useState('')
 
-    useEffect(() => { fetchData() }, [])
+    useEffect(() => { fetchData() }, [selectedTenant])
 
     const fetchData = async () => {
         try {
+            const params = {}
+            if (selectedTenant) params.tenant_id = selectedTenant
+
             const [usersRes, tenantsRes, domainsRes] = await Promise.all([
-                api.get('/users'),
+                api.get('/users', { params }),
                 api.get('/tenants'),
                 api.get('/domains')
             ])
@@ -68,6 +72,23 @@ export default function Users() {
                 <button onClick={() => setShowModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
                     {t('users.addUser')}
                 </button>
+            </div>
+
+            {/* Filters */}
+            <div className="bg-white p-4 shadow rounded-lg flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                    <label className="text-sm font-medium text-gray-700">{t('common.filter')}:</label>
+                    <select
+                        value={selectedTenant}
+                        onChange={(e) => setSelectedTenant(e.target.value)}
+                        className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                    >
+                        <option value="">{t('users.allTenants', 'Todos os Clientes')}</option>
+                        {tenants.map(tenant => (
+                            <option key={tenant.id} value={tenant.id}>{tenant.name}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             <div className="bg-white shadow rounded-lg overflow-hidden">

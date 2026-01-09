@@ -122,6 +122,7 @@
         "password": "Password",
         "quota": "Quota",
         "usage": "Usage",
+        "allTenants": "All Clients",
         "noUsers": "No users found"
     },
     "aliases": {

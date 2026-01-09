@@ -21,18 +21,18 @@ router.use(authenticateToken);
 router.get('/', blacklistController.list);
 
 // POST /api/blacklist - Add entry (manual)
-router.post('/', requireRole(['super-admin', 'admin']), blacklistController.create);
+router.post('/', requireRole(['superadmin', 'admin']), blacklistController.create);
 
 // DELETE /api/blacklist/:id - Remove entry
-router.delete('/:id', requireRole(['super-admin', 'admin']), blacklistController.delete);
+router.delete('/:id', requireRole(['superadmin', 'admin']), blacklistController.delete);
 
 // GET /api/blacklist/auto/stats - Auto-blacklist statistics
 router.get('/auto/stats', autoBlacklistController.stats);
 
 // POST /api/blacklist/auto/sync - Sync blacklist to Redis
-router.post('/auto/sync', requireRole(['super-admin', 'admin']), autoBlacklistController.sync);
+router.post('/auto/sync', requireRole(['superadmin', 'admin']), autoBlacklistController.sync);
 
 // POST /api/blacklist/auto/cleanup - Clean old auto entries
-router.post('/auto/cleanup', requireRole(['super-admin']), autoBlacklistController.cleanup);
+router.post('/auto/cleanup', requireRole(['superadmin']), autoBlacklistController.cleanup);
 
 module.exports = router;

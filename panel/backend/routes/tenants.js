@@ -12,13 +12,13 @@ router.get('/', tenantsController.list);
 // GET /api/tenants/:id - Get single tenant
 router.get('/:id', tenantsController.get);
 
-// POST /api/tenants - Create tenant (super-admin only)
-router.post('/', requireRole(['super-admin']), tenantsController.create);
+// POST /api/tenants - Create tenant (superadmin only)
+router.post('/', requireRole(['superadmin']), tenantsController.create);
 
-// PUT /api/tenants/:id - Update tenant (super-admin only)
-router.put('/:id', requireRole(['super-admin']), tenantsController.update);
+// PUT /api/tenants/:id - Update tenant (superadmin only)
+router.put('/:id', requireRole(['superadmin']), tenantsController.update);
 
-// DELETE /api/tenants/:id - Delete tenant (super-admin only)
-router.delete('/:id', requireRole(['super-admin']), tenantsController.delete);
+// DELETE /api/tenants/:id - Delete tenant (superadmin only)
+router.delete('/:id', requireRole(['superadmin']), tenantsController.delete);
 
 module.exports = router;

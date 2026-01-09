@@ -4,7 +4,7 @@ const auditController = require('../controllers/audit.controller');
 const { authenticateToken, requireRole } = require('../middleware/auth.middleware');
 
 router.use(authenticateToken);
-router.use(requireRole(['super-admin', 'admin'])); // superadmin and admin can view audit logs
+router.use(requireRole(['superadmin', 'admin'])); // superadmin and admin can view audit logs
 
 router.get('/', auditController.list);
 router.get('/stats', auditController.stats);

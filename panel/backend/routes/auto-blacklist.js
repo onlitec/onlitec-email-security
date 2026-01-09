@@ -14,6 +14,6 @@ router.use(authenticateToken);
 router.get('/auto/stats', autoBlacklistController.stats);
 
 // POST /api/blacklist/auto/cleanup - Clean old auto entries
-router.post('/auto/cleanup', requireRole(['super-admin']), autoBlacklistController.cleanup);
+router.post('/auto/cleanup', requireRole(['superadmin']), autoBlacklistController.cleanup);
 
 module.exports = router;

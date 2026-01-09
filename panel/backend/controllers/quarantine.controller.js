@@ -136,12 +136,13 @@ exports.release = async (req, res) => {
             headers: emailData.headers
         });
 
+        // Note: released_by set to NULL because admin_users IDs are not in users table
         const result = await pool.query(`
             UPDATE quarantine 
-            SET status = 'released', released_at = NOW(), released_by = $2
+            SET status = 'released', released_at = NOW(), released_by = NULL
             WHERE id = $1
             RETURNING id, from_address as sender, to_address as recipient, subject
-        `, [id, req.user?.userId || 'admin-system']);
+        `, [id]);
 
         logger.info(`Email released from quarantine: ${id} by ${req.user?.email || 'system'}`);
         res.json({ success: true, message: 'Email released and delivered successfully', data: result.rows[0] });
@@ -172,8 +173,9 @@ exports.approve = async (req, res) => {
             headers: email.headers
         });
 
-        await pool.query(`UPDATE quarantine SET status = 'released', released_at = NOW(), released_by = $1 WHERE id = $2`,
-            [req.user?.userId || null, id]);
+        // Note: released_by set to NULL because admin_users IDs are not in users table
+        await pool.query(`UPDATE quarantine SET status = 'released', released_at = NOW(), released_by = NULL WHERE id = $1`,
+            [id]);
 
         // 3. Add to Whitelist
         const sender = email.from_address;

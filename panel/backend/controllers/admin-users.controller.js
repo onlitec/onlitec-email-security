@@ -105,14 +105,14 @@ exports.createUser = async (req, res) => {
         }
 
         // Validate role
-        const validRoles = ['superadmin', 'admin', 'manager', 'viewer'];
+        const validRoles = ['super-admin', 'admin', 'manager', 'viewer'];
         if (!validRoles.includes(role)) {
             return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid role' } });
         }
 
         // Check if current user can create this role
         const currentUserRole = req.user.role;
-        if (currentUserRole !== 'superadmin' && (role === 'superadmin' || role === 'admin')) {
+        if (currentUserRole !== 'super-admin' && (role === 'super-admin' || role === 'admin')) {
             return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You cannot create users with this role' } });
         }
 
@@ -156,13 +156,13 @@ exports.updateUser = async (req, res) => {
 
         // Check permissions
         const currentUserRole = req.user.role;
-        if (currentUserRole !== 'superadmin') {
+        if (currentUserRole !== 'super-admin') {
             // Admins cannot modify superadmins or other admins
-            if (targetUser.role === 'superadmin' || targetUser.role === 'admin') {
+            if (targetUser.role === 'super-admin' || targetUser.role === 'admin') {
                 return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You cannot modify this user' } });
             }
             // Admins cannot promote to admin/superadmin
-            if (role === 'superadmin' || role === 'admin') {
+            if (role === 'super-admin' || role === 'admin') {
                 return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You cannot assign this role' } });
             }
         }
@@ -241,15 +241,15 @@ exports.deleteUser = async (req, res) => {
 
         // Check permissions
         const currentUserRole = req.user.role;
-        if (currentUserRole !== 'superadmin') {
-            if (targetUser.role === 'superadmin' || targetUser.role === 'admin') {
+        if (currentUserRole !== 'super-admin') {
+            if (targetUser.role === 'super-admin' || targetUser.role === 'admin') {
                 return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You cannot delete this user' } });
             }
         }
 
         // Check if this is the last superadmin
-        if (targetUser.role === 'superadmin') {
-            const superadminCount = await pool.query("SELECT COUNT(*) FROM admin_users WHERE role = 'superadmin' AND deleted_at IS NULL");
+        if (targetUser.role === 'super-admin') {
+            const superadminCount = await pool.query("SELECT COUNT(*) FROM admin_users WHERE role = 'super-admin' AND deleted_at IS NULL");
             if (parseInt(superadminCount.rows[0].count) <= 1) {
                 return res.status(400).json({ success: false, error: { code: 'LAST_SUPERADMIN', message: 'Cannot delete the last superadmin' } });
             }
@@ -289,8 +289,8 @@ exports.resetPassword = async (req, res) => {
 
         // Check permissions
         const currentUserRole = req.user.role;
-        if (currentUserRole !== 'superadmin') {
-            if (targetUser.role === 'superadmin' || targetUser.role === 'admin') {
+        if (currentUserRole !== 'super-admin') {
+            if (targetUser.role === 'super-admin' || targetUser.role === 'admin') {
                 return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You cannot reset password for this user' } });
             }
         }

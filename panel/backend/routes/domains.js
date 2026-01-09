@@ -13,18 +13,18 @@ router.get('/', domainsController.list);
 router.get('/:id', domainsController.get);
 
 // POST /api/domains - Create domain
-router.post('/', requireRole(['superadmin', 'admin']), domainsController.create);
+router.post('/', requireRole(['super-admin', 'admin']), domainsController.create);
 
 // PUT /api/domains/:id - Update domain
-router.put('/:id', requireRole(['superadmin', 'admin']), domainsController.update);
+router.put('/:id', requireRole(['super-admin', 'admin']), domainsController.update);
 
 // POST /api/domains/:id/generate-dkim - Generate DKIM keys
-router.post('/:id/generate-dkim', requireRole(['superadmin', 'admin']), domainsController.generateDkim);
+router.post('/:id/generate-dkim', requireRole(['super-admin', 'admin']), domainsController.generateDkim);
 
 // POST /api/domains/:id/verify-dns - Verify DNS records
-router.post('/:id/verify-dns', requireRole(['superadmin', 'admin']), domainsController.verifyDns);
+router.post('/:id/verify-dns', requireRole(['super-admin', 'admin']), domainsController.verifyDns);
 
 // DELETE /api/domains/:id - Delete domain
-router.delete('/:id', requireRole(['superadmin', 'admin']), domainsController.delete);
+router.delete('/:id', requireRole(['super-admin', 'admin']), domainsController.delete);
 
 module.exports = router;

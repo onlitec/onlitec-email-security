@@ -9,9 +9,9 @@ router.use(authenticateToken);
 router.get('/', whitelistController.list);
 
 // POST /api/whitelist - Add entry
-router.post('/', requireRole(['superadmin', 'admin']), whitelistController.create);
+router.post('/', requireRole(['super-admin', 'admin']), whitelistController.create);
 
 // DELETE /api/whitelist/:id - Remove entry
-router.delete('/:id', requireRole(['superadmin', 'admin']), whitelistController.delete);
+router.delete('/:id', requireRole(['super-admin', 'admin']), whitelistController.delete);
 
 module.exports = router;

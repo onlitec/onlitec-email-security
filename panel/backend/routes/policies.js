@@ -7,8 +7,8 @@ router.use(authenticateToken);
 
 router.get('/', policiesController.list);
 router.get('/:id', policiesController.get);
-router.post('/', requireRole(['superadmin', 'admin']), policiesController.create);
-router.put('/:id', requireRole(['superadmin', 'admin']), policiesController.update);
-router.delete('/:id', requireRole(['superadmin', 'admin']), policiesController.delete);
+router.post('/', requireRole(['super-admin', 'admin']), policiesController.create);
+router.put('/:id', requireRole(['super-admin', 'admin']), policiesController.update);
+router.delete('/:id', requireRole(['super-admin', 'admin']), policiesController.delete);
 
 module.exports = router;

@@ -39,7 +39,7 @@ const upload = multer({
 });
 
 router.use(authenticate);
-router.use(authorize('admin', 'superadmin', 'super-admin', 'manager')); // Admins and managers can manage system settings
+router.use(authorize('admin', 'super-admin', 'super-admin', 'manager')); // Admins and managers can manage system settings
 
 router.get('/', managerController.getSettings);
 router.put('/', managerController.updateSettings);

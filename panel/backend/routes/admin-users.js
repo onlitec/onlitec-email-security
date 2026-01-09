@@ -7,7 +7,7 @@ const { authenticate, authorize } = require('../middleware/auth.middleware');
 router.use(authenticate);
 
 // Only admin and superadmin can manage users
-router.use(authorize('admin', 'superadmin', 'super-admin'));
+router.use(authorize('admin', 'super-admin', 'super-admin'));
 
 // Routes
 router.get('/', adminUsersController.listUsers);

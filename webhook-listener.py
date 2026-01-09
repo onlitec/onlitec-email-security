@@ -15,7 +15,7 @@ from datetime import datetime
 # Configuração
 PORT = 9002  # Porta diferente do OnliOps (9001)
 SECRET = os.environ.get('WEBHOOK_SECRET', 'onlitec-email-webhook-secret-2024')
-DEPLOY_SCRIPT = '/home/alfreire/onlitec-email-security/auto-deploy.sh'
+DEPLOY_SCRIPT = '/home/alfreire/docker/apps/onlitec-email/auto-deploy.sh'
 REPO_NAME = 'onlitec/onlitec-email-security'
 
 def log(message):
@@ -42,10 +42,11 @@ def execute_deploy():
     try:
         result = subprocess.Popen(
             ['bash', DEPLOY_SCRIPT],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True
         )
-        log(f"✅ Deploy iniciado (PID: {result.pid})")
+        log(f"✅ Deploy iniciado em segundo plano (PID: {result.pid})")
         return True
     except Exception as e:
         log(f"❌ Erro ao executar deploy: {e}")

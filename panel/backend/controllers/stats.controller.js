@@ -39,7 +39,7 @@ exports.getStats = async (req, res) => {
         const virusDetected = await pool.query(`
             SELECT COUNT(*) as total
             FROM mail_logs ml
-            LEFT JOIN ai_verdicts av ON av.email_id = ml.id
+            LEFT JOIN ai_verdicts av ON av.mail_log_id = ml.id
             WHERE ml.created_at >= CURRENT_DATE - INTERVAL '7 days'
             AND (
                 -- Traditional virus detection
@@ -128,7 +128,7 @@ exports.getStats = async (req, res) => {
                     THEN 1 ELSE 0 
                 END) as virus
             FROM mail_logs ml
-            LEFT JOIN ai_verdicts av ON av.email_id = ml.id
+            LEFT JOIN ai_verdicts av ON av.mail_log_id = ml.id
             WHERE ml.created_at >= CURRENT_DATE - INTERVAL '7 days'
             GROUP BY DATE(ml.created_at)
             ORDER BY date ASC

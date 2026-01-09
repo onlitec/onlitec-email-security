@@ -5,15 +5,6 @@ local rspamd_logger = require "rspamd_logger"
 local rspamd_redis = require "lua_redis"
 local lpeg = require "lpeg"
 
--- Helper to get tenant ID (Mocked for now)
-local function get_tenant_by_domain(task, domain)
-  -- In production: Lookup Redis/DB
-  if domain == "onlitec.com.br" then
-    return "c3f5a2bf-d447-4729-95f9-61215bdf5275"
-  end
-  return nil
-end
-
 local function get_tenant_policy(task, tenant_id)
   -- Return default policy
   return {
@@ -47,9 +38,6 @@ local function whitelist_blacklist_check(task)
   local client_ip = task:get_from_ip()
   local client_ip_str = client_ip and tostring(client_ip) or "unknown"
   
-  local tenant_id = get_tenant_by_domain(task, recipient_domain)
-  if not tenant_id then return end
-  
   -- Parse redis connection parameters
   local redis_params = rspamd_parse_redis_server('redis')
   if not redis_params then
@@ -57,50 +45,69 @@ local function whitelist_blacklist_check(task)
     return
   end
   
-  -- Whitelist keys
-  local whitelist_keys = {
-    string.format("tenant:%s:whitelist:email:%s", tenant_id, from_addr),
-    string.format("tenant:%s:whitelist:domain:%s", tenant_id, from_domain),
-    string.format("tenant:%s:whitelist:ip:%s", tenant_id, client_ip_str)
-  }
+  -- Async Tenant ID Lookup
+  local domain_key = string.format("domain:%s:tenant_id", recipient_domain)
   
-  -- Blacklist keys
-  local blacklist_keys = {
-    string.format("blacklist:%s:email:%s", tenant_id, from_addr),
-    string.format("blacklist:%s:domain:%s", tenant_id, from_domain),
-    string.format("blacklist:%s:ip:%s", tenant_id, client_ip_str),
-    string.format("blacklist:global:email:%s", from_addr),
-    string.format("blacklist:global:domain:%s", from_domain),
-    string.format("blacklist:global:ip:%s", client_ip_str)
-  }
+  local decision_made = false
   
-  local checked_count = 0
-  local total_wl = #whitelist_keys
-  
-  -- Check Whitelist
-  for _, key in ipairs(whitelist_keys) do
-    local function wl_cb(err, data)
-      checked_count = checked_count + 1
-      if not err and data and (data == 1 or data == "1" or data == true) then
-        rspamd_logger.infox(task, "✅ WHITELISTED sender: %s (key: %s)", from_addr, key)
-        task:set_pre_result('accept', 'Whitelisted: ' .. from_addr)
-        return
-      end
-      
-      -- If all WL checked and none found, check BL
-      if checked_count == total_wl then
-         for _, bl_key in ipairs(blacklist_keys) do
-            rspamd_redis.redis_make_request(task, redis_params, key, false, function(err, data)
-                if not err and (data == 1 or data == "1" or data == true) then
-                   rspamd_logger.infox(task, "🚫 BLACKLISTED sender: %s (key: %s)", from_addr, bl_key)
-                   task:set_pre_result('reject', 'Blacklisted: ' .. from_addr)
-                end
-            end, 'EXISTS', {bl_key})
-         end
-      end
+  local function tenant_id_cb(err, data)
+    if err or not data or (type(data) == 'userdata' and tostring(data) == 'null') then
+      return
     end
-    rspamd_redis.redis_make_request(task, redis_params, key, false, wl_cb, 'EXISTS', {key})
+    
+    local tenant_id = tostring(data)
+    
+    -- Whitelist keys
+    local whitelist_keys = {
+      string.format("tenant:%s:whitelist:email:%s", tenant_id, from_addr),
+      string.format("tenant:%s:whitelist:domain:%s", tenant_id, from_domain),
+      string.format("tenant:%s:whitelist:ip:%s", tenant_id, client_ip_str)
+    }
+    
+    -- Blacklist keys
+    local blacklist_keys = {
+      string.format("blacklist:%s:email:%s", tenant_id, from_addr),
+      string.format("blacklist:%s:domain:%s", tenant_id, from_domain),
+      string.format("blacklist:%s:ip:%s", tenant_id, client_ip_str),
+      string.format("blacklist:global:email:%s", from_addr),
+      string.format("blacklist:global:domain:%s", from_domain),
+      string.format("blacklist:global:ip:%s", client_ip_str)
+    }
+    
+    local checked_wl_count = 0
+    local total_wl = #whitelist_keys
+    
+    -- Check Whitelist Loop
+    for _, key in ipairs(whitelist_keys) do
+      rspamd_redis.redis_make_request(task, redis_params, key, false, function(err, data)
+        checked_wl_count = checked_wl_count + 1
+        if decision_made then return end
+        
+        if not err and (data == 1 or data == "1" or data == true) then
+          rspamd_logger.infox(task, "✅ WHITELISTED sender: %s (key: %s)", from_addr, key)
+          task:set_pre_result('accept', 'Whitelisted: ' .. from_addr)
+          decision_made = true
+          return
+        end
+        
+        -- If all WL checked and none found, check BL
+        if checked_wl_count == total_wl then
+           for _, bl_key in ipairs(blacklist_keys) do
+              rspamd_redis.redis_make_request(task, redis_params, bl_key, false, function(err, data)
+                  if decision_made then return end
+                  if not err and (data == 1 or data == "1" or data == true) then
+                     rspamd_logger.infox(task, "🚫 BLACKLISTED sender: %s (key: %s)", from_addr, bl_key)
+                     task:set_pre_result('reject', 'Blacklisted: ' .. from_addr)
+                     decision_made = true
+                  end
+              end, 'EXISTS', {bl_key})
+           end
+        end
+      end, 'EXISTS', {key})
+    end
   end
+  
+  rspamd_redis.redis_make_request(task, redis_params, domain_key, false, tenant_id_cb, 'GET', {domain_key})
 end
 
 --[[ QUARANTINE POLICY LOGIC ]]--
@@ -109,37 +116,49 @@ local function multitenant_callback(task)
   if not rcpt or not rcpt[1] then return end
   
   local domain = rcpt[1].domain
-  local tenant_id = get_tenant_by_domain(task, domain)
-  if not tenant_id then return end
   
-  local pool = task:get_mempool()
-  if pool then
-    pool:set_variable('tenant_id', tenant_id)
-  end
+  -- Parse redis connection parameters
+  local redis_params = rspamd_parse_redis_server('redis')
+  if not redis_params then return end
   
-  local policy = get_tenant_policy(task, tenant_id)
-  local score_raw = task:get_metric_score('default')
-  local score = score_raw and score_raw[1] or 0.0
+  local domain_key = string.format("domain:%s:tenant_id", domain)
   
-  if policy.quarantine_spam and score >= (policy.quarantine_score or 10.0) then
-    local q_score = policy.quarantine_score or 10.0
-    local r_score = policy.reject_score or 15.0
+  local function tenant_id_cb(err, data)
+    if err or not data or (type(data) == 'userdata' and tostring(data) == 'null') then return end
     
-    if score < q_score then
-      -- Boost to quarantine
-      local boost = q_score - score + 0.1
-      task:insert_result('ONLITEC_QUARANTINE', boost, 'Policy: Boosted to Quarantine')
-    elseif score >= r_score then
-      -- Lower to quarantine (prevent reject)
-      local target = (q_score + r_score) / 2
-      if task.set_metric_score then
-        task:set_metric_score('default', target)
-        task:insert_result('ONLITEC_QUARANTINE', 0.0, 'Policy: Diverted from Reject')
+    local tenant_id = tostring(data)
+    
+    local pool = task:get_mempool()
+    if pool then
+      pool:set_variable('tenant_id', tenant_id)
+    end
+    
+    local policy = get_tenant_policy(task, tenant_id)
+    local score_raw = task:get_metric_score('default')
+    local score = score_raw and score_raw[1] or 0.0
+    
+    if policy.quarantine_spam and score >= (policy.quarantine_score or 10.0) then
+      local q_score = policy.quarantine_score or 10.0
+      local r_score = policy.reject_score or 15.0
+      
+      if score < q_score then
+        -- Boost to quarantine
+        local boost = q_score - score + 0.1
+        task:insert_result('ONLITEC_QUARANTINE', boost, 'Policy: Boosted to Quarantine')
+      elseif score >= r_score then
+        -- Lower to quarantine (prevent reject)
+        local target = (q_score + r_score) / 2
+        if task.set_metric_score then
+          task:set_metric_score('default', target)
+          task:insert_result('ONLITEC_QUARANTINE', 0.0, 'Policy: Diverted from Reject')
+        end
+      else
+        task:insert_result('ONLITEC_QUARANTINE', 0.0, 'Policy: Quarantine')
       end
-    else
-      task:insert_result('ONLITEC_QUARANTINE', 0.0, 'Policy: Quarantine')
     end
   end
+  
+  rspamd_redis.redis_make_request(task, redis_params, domain_key, false, tenant_id_cb, 'GET', {domain_key})
 end
 
 -- Register Symbols

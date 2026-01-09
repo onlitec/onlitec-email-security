@@ -26,6 +26,12 @@ router.post('/:id/reject', requireRole(['super-admin', 'admin']), quarantineCont
 // POST /api/quarantine/bulk-release - Bulk release
 router.post('/bulk-release', requireRole(['super-admin', 'admin']), quarantineController.bulkRelease);
 
+// POST /api/quarantine/bulk-approve - Bulk approve
+router.post('/bulk-approve', requireRole(['super-admin', 'admin']), quarantineController.bulkApprove);
+
+// POST /api/quarantine/bulk-reject - Bulk reject
+router.post('/bulk-reject', requireRole(['super-admin', 'admin']), quarantineController.bulkReject);
+
 // DELETE /api/quarantine/:id - Delete email
 router.delete('/:id', requireRole(['super-admin', 'admin']), quarantineController.delete);
 

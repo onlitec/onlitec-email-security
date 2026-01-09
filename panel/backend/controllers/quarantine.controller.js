@@ -194,19 +194,21 @@ exports.approve = async (req, res) => {
         const sender = email.from_address;
         const tenant_id = email.tenant_id;
 
-        const checkRes = await pool.query('SELECT id FROM whitelist WHERE tenant_id = $1 AND type = $2 AND value = $3',
-            [tenant_id, 'email', sender]);
+        if (sender && tenant_id) {
+            const checkRes = await pool.query('SELECT id FROM whitelist WHERE tenant_id = $1 AND type = $2 AND value = $3',
+                [tenant_id, 'email', sender]);
 
-        if (checkRes.rows.length === 0) {
-            await pool.query('INSERT INTO whitelist (tenant_id, type, value, comment) VALUES ($1, $2, $3, $4)',
-                [tenant_id, 'email', sender, 'Auto-whitelisted via approval']);
+            if (checkRes.rows.length === 0) {
+                await pool.query('INSERT INTO whitelist (tenant_id, type, value, comment) VALUES ($1, $2, $3, $4)',
+                    [tenant_id, 'email', sender, 'Auto-whitelisted via approval']);
 
-            // Sync to Redis
-            try {
-                const redis = await getRedisClient();
-                const redisKey = `tenant:${tenant_id}:whitelist:email:${sender.toLowerCase()}`;
-                await redis.set(redisKey, '1');
-            } catch (re) { logger.error('Redis sync error:', re); }
+                // Sync to Redis
+                try {
+                    const redis = await getRedisClient();
+                    const redisKey = `tenant:${tenant_id}:whitelist:email:${sender.toLowerCase()}`;
+                    await redis.set(redisKey, '1');
+                } catch (re) { logger.error('Redis sync error:', re); }
+            }
         }
 
         res.json({ success: true, message: 'Email approved, delivered and sender whitelisted' });
@@ -227,25 +229,27 @@ exports.reject = async (req, res) => {
         const email = qRes.rows[0];
 
         // 2. Update status to reported/deleted
-        await pool.query(`UPDATE quarantine SET status = 'reported', deleted_at = NOW() WHERE id = $1`, [id]);
+        await pool.query(`UPDATE quarantine SET status = 'reported' WHERE id = $1`, [id]);
 
         // 3. Add to Blacklist
         const sender = email.from_address;
         const tenant_id = email.tenant_id;
 
-        const checkRes = await pool.query('SELECT id FROM blacklist WHERE tenant_id = $1 AND type = $2 AND value = $3',
-            [tenant_id, 'email', sender]);
+        if (sender && tenant_id) {
+            const checkRes = await pool.query('SELECT id FROM blacklist WHERE tenant_id = $1 AND type = $2 AND value = $3',
+                [tenant_id, 'email', sender]);
 
-        if (checkRes.rows.length === 0) {
-            await pool.query('INSERT INTO blacklist (tenant_id, type, value, comment) VALUES ($1, $2, $3, $4)',
-                [tenant_id, 'email', sender, 'Auto-blacklisted via rejection']);
+            if (checkRes.rows.length === 0) {
+                await pool.query('INSERT INTO blacklist (tenant_id, type, value, comment) VALUES ($1, $2, $3, $4)',
+                    [tenant_id, 'email', sender, 'Auto-blacklisted via rejection']);
 
-            // Sync to Redis
-            try {
-                const redis = await getRedisClient();
-                const redisKey = `blacklist:${tenant_id}:email:${sender.toLowerCase()}`;
-                await redis.set(redisKey, '1');
-            } catch (re) { logger.error('Redis sync error:', re); }
+                // Sync to Redis
+                try {
+                    const redis = await getRedisClient();
+                    const redisKey = `blacklist:${tenant_id}:email:${sender.toLowerCase()}`;
+                    await redis.set(redisKey, '1');
+                } catch (re) { logger.error('Redis sync error:', re); }
+            }
         }
 
         res.json({ success: true, message: 'Email rejected and sender blacklisted' });
@@ -261,7 +265,7 @@ exports.delete = async (req, res) => {
         const { id } = req.params;
 
         const result = await pool.query(`
-            UPDATE quarantine SET status = 'deleted', deleted_at = NOW()
+            UPDATE quarantine SET status = 'deleted'
             WHERE id = $1 AND status != 'deleted'
             RETURNING id
         `, [id]);
@@ -314,9 +318,9 @@ exports.bulkRelease = async (req, res) => {
 
                 await pool.query(`
                     UPDATE quarantine 
-                    SET status = 'released', released_at = NOW(), released_by = $2
+                    SET status = 'released', released_at = NOW(), released_by = NULL
                     WHERE id = $1
-                `, [emailData.id, req.user?.userId || 'admin-system']);
+                `, [emailData.id]);
 
                 successCount++;
             } catch (error) {
@@ -335,6 +339,99 @@ exports.bulkRelease = async (req, res) => {
     } catch (error) {
         logger.error('Error bulk releasing:', error);
         res.status(500).json({ success: false, error: { code: 'BULK_ERROR', message: 'Failed to release emails' } });
+    }
+};
+
+exports.bulkApprove = async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ success: false, message: 'IDs array required' });
+        }
+
+        const searchResult = await pool.query('SELECT * FROM quarantine WHERE id = ANY($1) AND status = \'quarantined\'', [ids]);
+        const emails = searchResult.rows;
+        let successCount = 0;
+
+        for (const email of emails) {
+            try {
+                await deliverEmail({
+                    id: email.id,
+                    sender: email.from_address,
+                    recipient: email.to_address,
+                    subject: email.subject,
+                    body: email.body,
+                    headers: email.headers
+                });
+
+                await pool.query(`UPDATE quarantine SET status = 'released', released_at = NOW(), released_by = NULL WHERE id = $1`, [email.id]);
+
+                const sender = email.from_address;
+                const tenant_id = email.tenant_id;
+
+                if (sender && tenant_id) {
+                    const checkRes = await pool.query('SELECT id FROM whitelist WHERE tenant_id = $1 AND type = $2 AND value = $3', [tenant_id, 'email', sender]);
+                    if (checkRes.rows.length === 0) {
+                        await pool.query('INSERT INTO whitelist (tenant_id, type, value, comment) VALUES ($1, $2, $3, $4)', [tenant_id, 'email', sender, 'Auto-whitelisted via bulk approval']);
+                        try {
+                            const redis = await getRedisClient();
+                            const redisKey = `tenant:${tenant_id}:whitelist:email:${sender.toLowerCase()}`;
+                            await redis.set(redisKey, '1');
+                        } catch (re) {}
+                    }
+                }
+                successCount++;
+            } catch (err) {
+                logger.error(`Failed to approve email ${email.id}:`, err);
+            }
+        }
+
+        res.json({ success: true, message: `${successCount} emails approved` });
+    } catch (error) {
+        logger.error('Error bulk approving:', error);
+        res.status(500).json({ success: false, message: 'Failed to bulk approve' });
+    }
+};
+
+exports.bulkReject = async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ success: false, message: 'IDs array required' });
+        }
+
+        const searchResult = await pool.query('SELECT * FROM quarantine WHERE id = ANY($1)', [ids]);
+        const emails = searchResult.rows;
+        let successCount = 0;
+
+        for (const email of emails) {
+            try {
+                await pool.query(`UPDATE quarantine SET status = 'reported' WHERE id = $1`, [email.id]);
+
+                const sender = email.from_address;
+                const tenant_id = email.tenant_id;
+
+                if (sender && tenant_id) {
+                    const checkRes = await pool.query('SELECT id FROM blacklist WHERE tenant_id = $1 AND type = $2 AND value = $3', [tenant_id, 'email', sender]);
+                    if (checkRes.rows.length === 0) {
+                        await pool.query('INSERT INTO blacklist (tenant_id, type, value, comment) VALUES ($1, $2, $3, $4)', [tenant_id, 'email', sender, 'Auto-blacklisted via bulk rejection']);
+                        try {
+                            const redis = await getRedisClient();
+                            const redisKey = `blacklist:${tenant_id}:email:${sender.toLowerCase()}`;
+                            await redis.set(redisKey, '1');
+                        } catch (re) {}
+                    }
+                }
+                successCount++;
+            } catch (err) {
+                logger.error(`Failed to reject email ${email.id}:`, err);
+            }
+        }
+
+        res.json({ success: true, message: `${successCount} emails rejected` });
+    } catch (error) {
+        logger.error('Error bulk rejecting:', error);
+        res.status(500).json({ success: false, message: 'Failed to bulk reject' });
     }
 };
 

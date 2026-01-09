@@ -80,9 +80,7 @@ export default function Quarantine() {
         const msg = action === 'approve' ? 'Aprovar' : 'Rejeitar';
         if (!confirm(t(`quarantine.confirmBulk${action}`, `${msg} ${selected.length} emails?`))) return
         try {
-            for (const id of selected) {
-                await api.post(`/quarantine/${id}/${action}`)
-            }
+            await api.post(`/quarantine/bulk-${action}`, { ids: selected })
             setSelected([])
             fetchEmails()
         } catch (err) {

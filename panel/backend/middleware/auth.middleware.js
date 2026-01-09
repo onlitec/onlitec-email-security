@@ -75,7 +75,11 @@ const authorize = (...allowedRoles) => {
             });
         }
 
-        if (allowedRoles.length > 0 && !allowedRoles.includes(req.user.role)) {
+        // Normalize role: convert 'super-admin' to 'superadmin' for compatibility
+        const userRole = req.user.role ? req.user.role.replace(/-/g, '') : '';
+        const normalizedAllowedRoles = allowedRoles.map(role => role.replace(/-/g, ''));
+
+        if (normalizedAllowedRoles.length > 0 && !normalizedAllowedRoles.includes(userRole)) {
             return res.status(403).json({
                 success: false,
                 error: {
@@ -88,6 +92,7 @@ const authorize = (...allowedRoles) => {
         next();
     };
 };
+
 
 // Optional authentication (doesn't fail if no token)
 const optionalAuth = (req, res, next) => {

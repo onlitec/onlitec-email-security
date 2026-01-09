@@ -9,6 +9,22 @@ const pool = new Pool({
     password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || 'changeme123'
 });
 
+const { getRedisClient } = require('../config/redis');
+
+async function syncRecipientToRedis(tenant_id, email, exists) {
+    try {
+        const redis = await getRedisClient();
+        const key = `tenant:${tenant_id}:recipient:${email.toLowerCase()}`;
+        if (exists) {
+            await redis.set(key, '1');
+        } else {
+            await redis.del(key);
+        }
+    } catch (err) {
+        logger.error('Error syncing recipient to Redis:', err);
+    }
+}
+
 // List virtual addresses (aliases)
 exports.list = async (req, res) => {
     try {
@@ -70,6 +86,10 @@ exports.create = async (req, res) => {
         `, [email, destination, tenant_id, domain_id, is_catch_all]);
 
         logger.info(`Alias created: ${email} -> ${destination}`);
+
+        // Sync to Redis
+        await syncRecipientToRedis(tenant_id, email, true);
+
         res.status(201).json({ success: true, data: result.rows[0] });
     } catch (error) {
         logger.error('Error creating alias:', error);
@@ -107,6 +127,13 @@ exports.update = async (req, res) => {
         }
 
         res.json({ success: true, data: result.rows[0] });
+
+        // Sync to Redis
+        if (result.rows[0].enabled === false) {
+            await syncRecipientToRedis(result.rows[0].tenant_id, result.rows[0].email, false);
+        } else {
+            await syncRecipientToRedis(result.rows[0].tenant_id, result.rows[0].email, true);
+        }
     } catch (error) {
         logger.error('Error updating alias:', error);
         res.status(500).json({ success: false, error: { code: 'UPDATE_ERROR', message: 'Failed to update alias' } });
@@ -124,6 +151,10 @@ exports.delete = async (req, res) => {
         }
 
         logger.info(`Alias deleted: ${result.rows[0].email}`);
+
+        // Sync to Redis
+        await syncRecipientToRedis(result.rows[0].tenant_id, result.rows[0].email, false);
+
         res.json({ success: true, message: 'Alias deleted successfully' });
     } catch (error) {
         logger.error('Error deleting alias:', error);

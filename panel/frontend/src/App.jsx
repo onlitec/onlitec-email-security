@@ -21,6 +21,7 @@ import AdminUsers from './pages/AdminUsers'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Reports from './pages/Reports'
+import Queue from './pages/Queue'
 import Layout from './components/Layout'
 import { usePWA } from './hooks/usePWA'
 import { SettingsProvider } from './contexts/SettingsContext'
@@ -126,6 +127,7 @@ function App() {
                                     <Route path="/ai-verdicts" element={<AIVerdicts />} />
                                     <Route path="/manager" element={<Manager />} />
                                     <Route path="/admin-users" element={<AdminUsers />} />
+                                    <Route path="/queue" element={<Queue />} />
                                 </Routes>
                             </Layout>
                         ) : (

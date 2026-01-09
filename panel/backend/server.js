@@ -32,6 +32,7 @@ const configRoutes = require('./routes/config');
 const aiRoutes = require('./routes/ai');
 const adminUsersRoutes = require('./routes/admin-users');
 const reportsRoutes = require('./routes/reports');
+const queueRoutes = require('./routes/queue');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -166,6 +167,7 @@ app.use('/api/config', configRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/admin-users', adminUsersRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/queue', queueRoutes);
 
 // Metrics endpoint
 app.get('/metrics', async (req, res) => {

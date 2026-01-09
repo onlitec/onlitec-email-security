@@ -150,7 +150,8 @@ export default function Aliases() {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">{t('aliases.destination')}</label>
                                 <input type="text" value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })}
-                                    placeholder="real@email.com" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required />
+                                    placeholder={t('aliases.destinationPlaceholder', 'real@email.com ou "delivered" para conta local')} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required />
+                                <p className="mt-1 text-xs text-gray-500">Use "delivered" para contas que existem no seu servidor (HostGator).</p>
                             </div>
                             <div className="flex items-center">
                                 <input type="checkbox" checked={form.is_catch_all} onChange={(e) => setForm({ ...form, is_catch_all: e.target.checked })}
@@ -163,8 +164,9 @@ export default function Aliases() {
                             </div>
                         </form>
                     </div>
-                </div>
-            )}
-        </div>
+                </div >
+            )
+            }
+        </div >
     )
 }

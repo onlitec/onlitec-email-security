@@ -31,7 +31,7 @@
         "tenants": "Clientes",
         "domains": "Domínios",
         "users": "Usuários",
-        "aliases": "Aliases",
+        "aliases": "Contas de Email",
         "policies": "Políticas",
         "quarantine": "Quarentena",
         "logs": "Logs",
@@ -125,15 +125,15 @@
         "noUsers": "Nenhum usuário encontrado"
     },
     "aliases": {
-        "title": "Aliases de Email",
-        "subtitle": "Gerenciar encaminhamentos de email e endereços catch-all",
-        "addAlias": "Adicionar Alias",
-        "email": "Email (endereço de alias)",
-        "destination": "Destino (encaminhar para)",
-        "forward": "Encaminhamento",
+        "title": "Contas de Email",
+        "subtitle": "Gerenciar endereços de email válidos e encaminhamentos",
+        "addAlias": "Adicionar Conta",
+        "email": "Endereço de Email",
+        "destination": "Destino (Redirecionamento)",
+        "forward": "Entrega Direta",
         "catchAll": "Catch-All",
         "catchAllHelp": "Receber todos os emails para este domínio",
-        "noAliases": "Nenhum alias encontrado"
+        "noAliases": "Nenhuma conta encontrada"
     },
     "policies": {
         "title": "Políticas de Spam",

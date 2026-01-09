@@ -26,7 +26,7 @@ RUN npm run build
 # Final image
 FROM node:18-alpine
 
-RUN apk add --no-cache postgresql-client curl
+RUN apk add --no-cache postgresql-client curl docker-cli
 
 WORKDIR /app
 

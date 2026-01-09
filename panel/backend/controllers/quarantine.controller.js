@@ -273,13 +273,49 @@ exports.bulkRelease = async (req, res) => {
             return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'IDs array required' } });
         }
 
-        const result = await pool.query(`
-            UPDATE quarantine SET status = 'released', released_at = NOW()
-            WHERE id = ANY($1) AND status = 'quarantined'
+        // Get emails to deliver
+        const searchResult = await pool.query(`
+            SELECT * FROM quarantine WHERE id = ANY($1) AND status = 'quarantined'
         `, [ids]);
 
-        logger.info(`Bulk release: ${result.rowCount} emails`);
-        res.json({ success: true, message: `${result.rowCount} emails released` });
+        const emails = searchResult.rows;
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const emailData of emails) {
+            try {
+                // Add a header to indicate this is a released email to help Rspamd bypass if needed
+                const headers = emailData.headers ? JSON.parse(emailData.headers) : {};
+                headers['X-Onlitec-Released'] = 'true';
+
+                await deliverEmail({
+                    id: emailData.id,
+                    sender: emailData.from_address,
+                    recipient: emailData.to_address,
+                    subject: emailData.subject,
+                    body: emailData.body,
+                    headers: JSON.stringify(headers)
+                });
+
+                await pool.query(`
+                    UPDATE quarantine 
+                    SET status = 'released', released_at = NOW(), released_by = $2
+                    WHERE id = $1
+                `, [emailData.id, req.user?.userId || 'admin-system']);
+
+                successCount++;
+            } catch (error) {
+                logger.error(`Failed to deliver email ${emailData.id} in bulk release:`, error);
+                errorCount++;
+            }
+        }
+
+        logger.info(`Bulk release: ${successCount} emails delivered, ${errorCount} failed`);
+        res.json({
+            success: true,
+            message: `${successCount} emails released and delivered successfully${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+            data: { successCount, errorCount }
+        });
 
     } catch (error) {
         logger.error('Error bulk releasing:', error);

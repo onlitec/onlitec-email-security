@@ -84,26 +84,39 @@ exports.get = async (req, res) => {
     }
 };
 
-// Helper to deliver email via SMTP
+// Helper to deliver email via sendmail (injects raw email)
 const deliverEmail = async (emailData) => {
     try {
-        const transporter = nodemailer.createTransport({
-            host: process.env.POSTFIX_HOST || 'onlitec_postfix',
-            port: 25,
-            secure: false,
-            tls: { rejectUnauthorized: false }
-        });
+        const { exec } = require('child_process');
 
-        await transporter.sendMail({
-            from: emailData.sender,
-            to: emailData.recipient,
-            subject: emailData.subject,
-            html: emailData.body,
-            headers: emailData.headers ? JSON.parse(emailData.headers) : {}
-        });
+        // The body field contains the full raw email (headers + body)
+        // We inject it directly via sendmail
+        const rawEmail = emailData.body;
 
-        logger.info(`Email delivered via SMTP: ${emailData.id}`);
-        return true;
+        if (!rawEmail) {
+            throw new Error('No raw email content to deliver');
+        }
+
+        // Use docker exec to run sendmail in the postfix container
+        return new Promise((resolve, reject) => {
+            const child = exec(
+                `docker exec -i onlitec_postfix sendmail -t -oi`,
+                { maxBuffer: 10 * 1024 * 1024 },
+                (error, stdout, stderr) => {
+                    if (error) {
+                        logger.error(`Sendmail error: ${stderr}`);
+                        reject(error);
+                    } else {
+                        logger.info(`Email delivered via sendmail: ${emailData.id}`);
+                        resolve(true);
+                    }
+                }
+            );
+
+            // Write raw email content to stdin
+            child.stdin.write(rawEmail);
+            child.stdin.end();
+        });
     } catch (error) {
         logger.error(`Failed to deliver email ${emailData.id}:`, error);
         throw error;

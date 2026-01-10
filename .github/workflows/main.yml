@@ -6,41 +6,170 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  NODE_VERSION: '18'
+
 jobs:
-  test:
+  # Backend Tests
+  backend-test:
+    name: Backend Tests
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: panel/backend/package-lock.json
 
       - name: Install Backend Dependencies
         run: |
           cd panel/backend
-          npm install
+          npm ci || npm install
 
-      - name: List Backend Files
-        run: ls -R panel/backend
+      - name: Run Backend Tests
+        run: |
+          cd panel/backend
+          npm run test:ci
+        env:
+          NODE_ENV: test
+          JWT_SECRET: test-secret-for-ci
 
-  build-frontend:
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          directory: ./panel/backend/coverage
+          fail_ci_if_error: false
+          verbose: true
+
+  # Frontend Build
+  frontend-build:
+    name: Frontend Build
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: panel/frontend/package-lock.json
 
       - name: Install Frontend Dependencies
         run: |
           cd panel/frontend
-          npm install
+          npm ci || npm install
 
       - name: Build Frontend
         run: |
           cd panel/frontend
           npm run build
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: panel/frontend/dist
+          retention-days: 7
+
+  # Lint Check
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Check Backend Structure
+        run: |
+          echo "Checking backend structure..."
+          test -f panel/backend/server.js || (echo "server.js not found" && exit 1)
+          test -f panel/backend/package.json || (echo "package.json not found" && exit 1)
+          test -d panel/backend/routes || (echo "routes directory not found" && exit 1)
+          test -d panel/backend/controllers || (echo "controllers directory not found" && exit 1)
+          test -d panel/backend/middleware || (echo "middleware directory not found" && exit 1)
+          echo "✅ Backend structure OK"
+
+      - name: Check Frontend Structure
+        run: |
+          echo "Checking frontend structure..."
+          test -f panel/frontend/package.json || (echo "package.json not found" && exit 1)
+          test -f panel/frontend/vite.config.js || (echo "vite.config.js not found" && exit 1)
+          echo "✅ Frontend structure OK"
+
+  # Docker Build Test
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Panel Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./panel
+          file: ./panel/Dockerfile
+          push: false
+          tags: onlitec-email-panel:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Security Check
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Audit Backend Dependencies
+        run: |
+          cd panel/backend
+          npm audit --audit-level=high || true
+
+      - name: Audit Frontend Dependencies
+        run: |
+          cd panel/frontend
+          npm audit --audit-level=high || true
+
+  # All checks passed
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build, lint, docker-build]
+    if: success()
+
+    steps:
+      - name: CI Passed
+        run: |
+          echo "✅ All CI checks passed!"
+          echo "Backend tests: ✓"
+          echo "Frontend build: ✓"
+          echo "Code quality: ✓"
+          echo "Docker build: ✓"

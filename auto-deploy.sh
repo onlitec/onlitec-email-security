@@ -7,7 +7,7 @@
 set -e
 
 # Configurações
-PROJECT_DIR="/home/alfreire/docker/apps/onlitec-email"
+PROJECT_DIR="/home/alfreire/onlitec-email-security"
 LOG_FILE="${PROJECT_DIR}/deploy.log"
 BACKUP_DIR="${PROJECT_DIR}/backups"
 DATE=$(date +%Y%m%d_%H%M%S)

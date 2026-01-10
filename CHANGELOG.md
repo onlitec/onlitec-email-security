@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2.1.0] - 2026-01-09
+
+### Added
+- Automated Test Suite for backend with Jest and Supertest
+- Enhanced CI/CD Pipeline with testing, linting, security audit, and Docker build test
+- Code coverage reporting
+
 ## [v2.0.3] - 2026-01-09
 
 ### Fixed
